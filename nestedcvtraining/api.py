@@ -2,8 +2,9 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from skopt import gp_minimize
 from docx import Document
 from docx.shared import Inches
-from nestedcvtraining.utils.training import train_inner_calibrated_binary_model
+from nestedcvtraining.utils.training import train_inner_model
 from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
+from collections import Counter
 
 
 def find_best_binary_model(
@@ -111,6 +112,9 @@ def find_best_binary_model(
     doc : Document python-docx if report_level > 0. Otherwise, None
     """
     # TODO: Check inputs
+    if len(Counter(y)) > 2:
+        raise NotImplementedError("Multilabel classification is not yet implemented")
+
     if loss_metric not in peeking_metrics:
         peeking_metrics.append(loss_metric)
 
@@ -145,14 +149,15 @@ def find_best_binary_model(
         if k not in skip_outer_folds:
             folds_index.append(k)
             inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
-            inner_model, model_params, model_comments = train_inner_calibrated_binary_model(
-                X=X[train_index], y=y[train_index], k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                X_hold_out=X[test_index], y_hold_out=y[test_index],
-                report_doc=inner_report_doc, n_initial_points=n_initial_points,
-                n_calls=n_calls,
-                dict_model_params=model_search_spaces,
-                loss_metric=loss_metric, peeking_metrics=peeking_metrics, verbose=verbose,
-                skopt_func=skopt_func)
+            X_hold_out = X[test_index] if report_level in [1, 11] else []
+            y_hold_out = y[test_index] if report_level in [1, 11] else []
+            inner_model, model_params, model_comments = train_inner_model(
+                X=X[train_index], y=y[train_index], model_search_spaces=model_search_spaces,
+                X_hold_out=X_hold_out, y_hold_out=y_hold_out,
+                k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
+                n_initial_points=n_initial_points, n_calls=n_calls,
+                calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=peeking_metrics,
+                verbose=verbose, skopt_func=skopt_func, report_doc=inner_report_doc)
             dict_inner_models.append({'model': inner_model,
                                  'params': model_params,
                                  'comments': model_comments})
@@ -160,19 +165,24 @@ def find_best_binary_model(
             outer_Xs.append(X[test_index])
             outer_ys.append(y[test_index])
     outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
+    add_plots = True if report_level > 9 else False
     evaluate_model(
-        dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys, X_val_var=X_val_var, y_val_var=y_val_var,
-        folds_index=folds_index, report_doc=outer_report_doc, loss_metric=loss_metric, peeking_metrics=peeking_metrics
+        dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys,
+        X_val_var=X_val_var, y_val_var=y_val_var,
+        folds_index=folds_index, report_doc=outer_report_doc,
+        loss_metric=loss_metric, peeking_metrics=peeking_metrics,
+        add_plots=add_plots
     )
     # After assessing the procedure, we repeat it on the full dataset:
     final_model = None
     if build_final_model:
-        final_model, _, _ = train_inner_calibrated_binary_model(
-                X=X, y=y, k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                report_doc=None, n_initial_points=n_initial_points,
-                n_calls=n_calls,
-                dict_model_params=model_search_spaces,
-                loss_metric=loss_metric, verbose=verbose, skopt_func=skopt_func)
+        final_model, _, _ = train_inner_model(
+                X=X, y=y, model_search_spaces=model_search_spaces,
+                X_hold_out=[], y_hold_out=[],
+                k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
+                n_initial_points=n_initial_points, n_calls=n_calls,
+                calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=[],
+                verbose=verbose, skopt_func=skopt_func, report_doc=None)
     return final_model, merge_docs(outer_report_doc, inner_report_doc)
 
 

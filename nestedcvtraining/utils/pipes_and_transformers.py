@@ -3,7 +3,7 @@ from imblearn.pipeline import Pipeline
 from skopt.space.transformers import Identity
 import numpy as np
 from collections import Counter
-from .reporting import MetadataFit, prop_minority_class
+from .reporting import MetadataFit, prop_minority_to_rest_class
 
 
 class MidasIdentity(Identity):
@@ -14,7 +14,7 @@ class MidasIdentity(Identity):
 class MidasInspectTransformer(Identity):
     def fit(self, X, y):
         self.samples = len(y)
-        self.prop_minority_class = prop_minority_class(Counter(y))
+        self.prop_minority_to_rest_class = prop_minority_to_rest_class(Counter(y))
         return self
 
 
@@ -39,8 +39,8 @@ def get_metadata_fit(pipeline):
     return MetadataFit(
         num_init_samples_bf=first_inspect_MIDAS.samples,
         num_init_samples_af=last_inspect_MIDAS.samples,
-        prop_minority_class_bf=first_inspect_MIDAS.prop_minority_class,
-        prop_minority_class_af=last_inspect_MIDAS.prop_minority_class
+        prop_minority_class_bf=first_inspect_MIDAS.prop_minority_to_rest_class,
+        prop_minority_class_af=last_inspect_MIDAS.prop_minority_to_rest_class
     )
 
 
@@ -78,6 +78,19 @@ class MidasEnsembleClassifiersWithPipeline:
 class OptionedPostProcessTransformer(TransformerMixin):
 
     def __init__(self, dict_pipelines):
+        all_steps = []
+        for pipeline in dict_pipelines.values():
+            all_steps.extend(pipeline.steps)
+        exists_resampler = any(
+            [
+                hasattr(step[1], "fit_resample")
+                for step in all_steps
+            ]
+        )
+        if exists_resampler:
+            raise ValueError("OptionedPostProcessTransformer does not "
+                             "support resamplers inside ")
+
         # TODO: Check if there is a resampler inside
         self.dict_pipelines = dict_pipelines
         self.option = list(dict_pipelines.keys())[0]

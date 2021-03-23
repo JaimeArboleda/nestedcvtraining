@@ -4,9 +4,10 @@ from .plotting import plot_calibration_curve, plot_roc_curve, plot_precision_rec
 from .metrics import get_metric
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
-from docx import Document
 from docxcompose.composer import Composer
 from collections import Counter
+from datetime import datetime
+
 
 SIZE_IMAGE = 8
 SIZE_FOLD_COL = 0.9
@@ -50,6 +51,7 @@ class MetadataFit:
     def get_prop_minority_class_af(self):
         return self._prop_minority_class_af
 
+
 def averaged_metadata_list(metadata_fit_list):
 
     return MetadataFit(
@@ -65,16 +67,14 @@ def averaged_metadata_list(metadata_fit_list):
 
 
 def ordered_keys_classes(binary_counter):
-    keys = list(binary_counter.keys())
-    if binary_counter[keys[0]] > binary_counter[keys[1]]:
-        return keys[1], keys[0]
-    else:
-        return keys[0], keys[1]
+    return [key for key, _ in reversed(binary_counter.most_common())]
 
 
-def prop_minority_class(binary_counter):
-    num_minority_class, num_majority_class = ((binary_counter[key] for key in ordered_keys_classes(binary_counter)))
-    return num_minority_class / (num_minority_class + num_majority_class)
+def prop_minority_to_rest_class(binary_counter):
+    ordered_counter = binary_counter.most_common()
+    num_minority_class = ordered_counter[-1][1]
+    num_rest = sum([value for value in binary_counter.values()])
+    return num_minority_class / num_rest
 
 
 def color_row(row):
@@ -84,7 +84,47 @@ def color_row(row):
         cell._tc.get_or_add_tcPr().append(shading_elm_2)
 
 
-def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, loss_metric, peeking_metrics=None, report_doc=None):
+def add_plots_doc(report_doc, ys, y_probas):
+    report_doc.add_heading(f'Main plots', level=2)
+
+    # Plot calibration curve
+    report_doc.add_heading('Calibration plots', level=3)
+    for index, y in enumerate(ys):
+        memfile = plot_calibration_curve(y, y_probas[index])
+        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+        memfile.close()
+
+    # Plot precision recall curve
+    report_doc.add_heading('Precision-recall curve plots', level=3)
+    for index, y in enumerate(ys):
+        memfile = plot_precision_recall_curve(y, y_probas[index])
+        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+        memfile.close()
+
+    # Plot roc curve
+    report_doc.add_heading('ROC curve plots', level=3)
+    for index, y in enumerate(ys):
+        memfile = plot_roc_curve(y, y_probas[index])
+        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+        memfile.close()
+
+    # Plot confussion matrix
+    report_doc.add_heading('Confusion matrix', level=3)
+    for index, y in enumerate(ys):
+        memfile = plot_confusion_matrix(y, y_probas[index])
+        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+        memfile.close()
+
+    # Plot histogram
+    report_doc.add_heading('Histograms', level=3)
+    for index, y in enumerate(ys):
+        memfile = plot_histogram(y, y_probas[index])
+        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+        memfile.close()
+
+
+def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
+                   loss_metric, peeking_metrics, report_doc, add_plots):
     y_probas = []
     for index, dict_model in enumerate(dict_models):
         y_probas.append(dict_model['model'].predict_proba(Xs[index])[:, 1])
@@ -136,42 +176,8 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, loss_
         report_doc.add_paragraph(f'For the selected optimization metric {loss_metric} '
                                  f'the average score is {np.round(np.mean(metrics), 3)}.')
 
-    report_doc.add_heading(f'Main plots', level=2)
-
-    # Plot calibration curve
-    report_doc.add_heading('Calibration plots', level=3)
-    for index, y in enumerate(ys):
-        memfile = plot_calibration_curve(y, y_probas[index])
-        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
-        memfile.close()
-
-    # Plot precision recall curve
-    report_doc.add_heading('Precision-recall curve plots', level=3)
-    for index, y in enumerate(ys):
-        memfile = plot_precision_recall_curve(y, y_probas[index])
-        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
-        memfile.close()
-
-    # Plot roc curve
-    report_doc.add_heading('ROC curve plots', level=3)
-    for index, y in enumerate(ys):
-        memfile = plot_roc_curve(y, y_probas[index])
-        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
-        memfile.close()
-
-    # Plot confussion matrix
-    report_doc.add_heading('Confusion matrix', level=3)
-    for index, y in enumerate(ys):
-        memfile = plot_confusion_matrix(y, y_probas[index])
-        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
-        memfile.close()
-
-    # Plot histogram
-    report_doc.add_heading('Histograms', level=3)
-    for index, y in enumerate(ys):
-        memfile = plot_histogram(y, y_probas[index])
-        report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
-        memfile.close()
+    if add_plots:
+        add_plots_doc(report_doc, ys, y_probas)
 
     report_doc.add_heading('Comparison of several predictions to assess variance', level=2)
     table = report_doc.add_table(rows=len(y_val_var) + 1, cols=len(dict_models) + 3)
@@ -254,6 +260,7 @@ def write_intro_doc(report_doc, y, model_search_spaces,
             calibrated, loss_metric, size_variance_validation,
             skopt_func):
     report_doc.add_heading('Introduction', level=1)
+    report_doc.add_paragraph(f'Report of search and training made on {datetime.today().strftime("%Y-%m-%d")}')
     report_doc.add_heading('Training data', level=2)
     p = report_doc.add_paragraph()
     p.add_run(f'There are {len(y)} training samples. ')
@@ -284,7 +291,8 @@ def write_intro_doc(report_doc, y, model_search_spaces,
     return
 
 
-def write_train_report(report_doc, list_params, list_metrics, list_holdout_metrics, peeking_metrics, list_comments):
+def write_train_report(report_doc, list_params, list_metrics,
+                       list_holdout_metrics, peeking_metrics, list_comments):
     print_holdout_metrics = len(list_holdout_metrics) > 0
     report_doc.add_heading(f'Report of training in this outer fold', level=2)
     list_loss_metrics = [metric['loss_metric'] for metric in list_metrics]

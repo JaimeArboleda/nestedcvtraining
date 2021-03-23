@@ -8,8 +8,7 @@ def histogram_width(y_true, y_proba):
     return 4 * (np.sum((y_proba - 0.5) ** 2) / len(y_proba))
 
 
-
-dict_metrics = {
+METRICS = {
     'roc_auc': {
         'score_type': 'gain',
         'func': roc_auc_score
@@ -42,11 +41,11 @@ def neg_score(func):
 
 
 def get_metric(name, option):
-    if name not in dict_metrics.keys():
+    if name not in METRICS.keys():
         raise ValueError("Metric not supported: " + name)
     if option not in {'loss', 'real'}:
         raise TypeError("Option not supported: " + option)
-    metric = dict_metrics[name]
+    metric = METRICS[name]
     if option == 'real' or metric['score_type'] == 'loss':
         return metric['func']
     else:
