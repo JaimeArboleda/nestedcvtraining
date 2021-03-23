@@ -84,7 +84,7 @@ def color_row(row):
         cell._tc.get_or_add_tcPr().append(shading_elm_2)
 
 
-def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, peeking_metrics=None, report_doc=None):
+def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, loss_metric, peeking_metrics=None, report_doc=None):
     y_probas = []
     for index, dict_model in enumerate(dict_models):
         y_probas.append(dict_model['model'].predict_proba(Xs[index])[:, 1])
@@ -109,6 +109,7 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, peeki
             first_row.cells[i + 4].width = Inches(SIZE_METRIC_COL)
             first_row.cells[i + 4].paragraphs[0].add_run(metric).bold = True
         # Fill other rows of table
+        metrics = []
         for index, dict_model in enumerate(dict_models):
             row_index = index + 1
             row = table.rows[row_index]
@@ -126,8 +127,14 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index, peeki
             write_paragraphs_dict(row.cells[3], dict_model['comments'], SIZE_SMALL_FONT, is_cell_table=True)
             for i, metric in enumerate(peeking_metrics):
                 row.cells[i + 4].width = Inches(SIZE_METRIC_COL)
+                value_of_metric = get_metric(metric, 'real')(ys[index], y_probas[index])
+                if metric == loss_metric:
+                    metrics.append(value_of_metric)
                 row.cells[i + 4].paragraphs[0].add_run(
-                    str(np.round(get_metric(metric, 'real')(ys[index], y_probas[index]), 3)))
+                    str(np.round(value_of_metric, 3)))
+        # Add average
+        report_doc.add_paragraph(f'For the selected optimization metric {loss_metric} '
+                                 f'the average score is {np.round(np.mean(metrics), 3)}.')
 
     report_doc.add_heading(f'Main plots', level=2)
 
@@ -261,7 +268,7 @@ def write_intro_doc(report_doc, y, model_search_spaces,
     report_doc.add_paragraph(f'Nested Cross Validation using {k_outer_fold} outer folds and '
                              f'{k_inner_fold} inner folds.').style = 'List Bullet'
     report_doc.add_paragraph(f'Some of the folds will be skipped. In particular, {skip_outer_folds} outer folds '
-                             f'{skip_inner_folds} inner folds will be skipped.').style = 'List Bullet'
+                             f'and {skip_inner_folds} inner folds will be skipped.').style = 'List Bullet'
     report_doc.add_paragraph(f'For each outer fold search, a model will be fitted. In order to search for the best '
                              f'hyperparameters, {n_initial_points} initial points will be evaluated, and '
                              f'{n_calls} additional calls will be made.').style = 'List Bullet'
@@ -344,6 +351,10 @@ def reporting_width(report_level, peeking_metrics):
 
 
 def merge_docs(first_doc, second_doc):
+    if not first_doc:
+        return second_doc
+    if not second_doc:
+        return first_doc
     composer = Composer(first_doc)
     composer.append(second_doc)
     return composer.doc

@@ -1,5 +1,4 @@
 from sklearn.base import TransformerMixin
-from sklearn.utils import _print_elapsed_time
 from imblearn.pipeline import Pipeline
 from skopt.space.transformers import Identity
 import numpy as np
@@ -7,29 +6,42 @@ from collections import Counter
 from .reporting import MetadataFit, prop_minority_class
 
 
-class MidasPipeline(Pipeline):
-
-    def fit(self, X, y=None, **fit_params):
-        fit_params_steps = self._check_fit_params(**fit_params)
-        Xt, yt = self._fit(X, y, **fit_params_steps)
-        self._metadata_fit = MetadataFit(
-            num_init_samples_bf=len(y),
-            num_init_samples_af=len(yt),
-            prop_minority_class_bf=prop_minority_class(Counter(y)),
-            prop_minority_class_af=prop_minority_class(Counter(yt)))
-        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
-            if self._final_estimator != "passthrough":
-                fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-                self._final_estimator.fit(Xt, yt, **fit_params_last_step)
-        return self
-
-    def get_metadata_fit(self):
-        return self._metadata_fit
-
-
 class MidasIdentity(Identity):
     def fit(self, X, y):
         return self
+
+
+class MidasInspectTransformer(Identity):
+    def fit(self, X, y):
+        self.samples = len(y)
+        self.prop_minority_class = prop_minority_class(Counter(y))
+        return self
+
+
+def wrap_pipeline(pipeline):
+    wrapped_steps = [('first_inspect_MIDAS', MidasInspectTransformer())] \
+                    + pipeline.steps \
+                    + [('last_inspect_MIDAS', MidasInspectTransformer())]
+    return Pipeline(wrapped_steps)
+
+
+def unwrap_pipeline(pipeline):
+    unwrapped_steps = [(name, transformer)
+                       for (name, transformer) in pipeline.steps
+                       if name not in ['first_inspect_MIDAS', 'last_inspect_MIDAS']]
+    return Pipeline(unwrapped_steps)
+
+
+def get_metadata_fit(pipeline):
+    steps = pipeline.steps
+    first_inspect_MIDAS = [transformer for name, transformer in steps if name == 'first_inspect_MIDAS'][0]
+    last_inspect_MIDAS = [transformer for name, transformer in steps if name == 'last_inspect_MIDAS'][0]
+    return MetadataFit(
+        num_init_samples_bf=first_inspect_MIDAS.samples,
+        num_init_samples_af=last_inspect_MIDAS.samples,
+        prop_minority_class_bf=first_inspect_MIDAS.prop_minority_class,
+        prop_minority_class_af=last_inspect_MIDAS.prop_minority_class
+    )
 
 
 class MidasEnsembleClassifiersWithPipeline:

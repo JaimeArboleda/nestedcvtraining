@@ -35,6 +35,7 @@ def find_best_binary_model(
         size_variance_validation=20,
         skopt_func=gp_minimize,
         verbose=False,
+        build_final_model=True
     ):
     """Finds best binary calibrated classification model and optionally
     generate a report doing a nested cross validation. In the inner
@@ -105,15 +106,15 @@ def find_best_binary_model(
     size_variance_validation : int, default=20
         Number of samples to use to check variance of different models.
 
+    skopt_func : callable, default=gp_minimize
+        Minimization function of the skopt library to be used.
+
     verbose : bool, default=False
         If True, you can trace the progress in the terminal.
 
     build_final_model : bool, default=True
         If False, no final model is built (only the report doc is returned). It can be convenient
         during the experimental phase.
-
-    skopt_func : callable, default=gp_minimize
-        Minimization function of the skopt library to be used.
 
     Returns
     -------
@@ -151,10 +152,11 @@ def find_best_binary_model(
     outer_Xs = []
     outer_ys = []
     folds_index = []
+    inner_report_doc.add_heading(f'Report of inner trainings', level=1)
     for k, (train_index, test_index) in enumerate(outer_cv.split(X, y)):
         if k not in skip_outer_folds:
             folds_index.append(k)
-            inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=1)
+            inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
             inner_model, model_params, model_comments = train_inner_calibrated_binary_model(
                 X=X[train_index], y=y[train_index], k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
                 X_hold_out=X[test_index], y_hold_out=y[test_index],
@@ -172,16 +174,19 @@ def find_best_binary_model(
     outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
     evaluate_model(
         dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys, X_val_var=X_val_var, y_val_var=y_val_var,
-        folds_index=folds_index, report_doc=outer_report_doc, peeking_metrics=peeking_metrics
+        folds_index=folds_index, report_doc=outer_report_doc, loss_metric=loss_metric, peeking_metrics=peeking_metrics
     )
     # After assessing the procedure, we repeat it on the full dataset:
-    final_model, _, _ = train_inner_calibrated_binary_model(
-            X=X, y=y, k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-            report_doc=None, n_initial_points=n_initial_points,
-            n_calls=n_calls,
-            dict_model_params=model_search_spaces,
-            loss_metric=loss_metric, verbose=verbose, skopt_func=skopt_func)
+    final_model = None
+    if build_final_model:
+        final_model, _, _ = train_inner_calibrated_binary_model(
+                X=X, y=y, k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
+                report_doc=None, n_initial_points=n_initial_points,
+                n_calls=n_calls,
+                dict_model_params=model_search_spaces,
+                loss_metric=loss_metric, verbose=verbose, skopt_func=skopt_func)
     return final_model, merge_docs(outer_report_doc, inner_report_doc)
+
 
 
 
