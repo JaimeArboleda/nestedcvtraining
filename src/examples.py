@@ -127,7 +127,7 @@ if __name__ == "__main__":
         },
         "random_forest": {
             "model": RandomForestClassifier(),
-            "pipeline_post_process": Pipeline([("scale", StandardScaler())]),
+            "pipeline_post_process": None,
             "search_space": [
                 Categorical([True, False], name="undersampling_majority_class"),
                 Integer(0, 1, name="model__bootstrap"),
@@ -162,4 +162,4 @@ if __name__ == "__main__":
             "neg_brier_score",
         ],
     )
-    document.save("report_dataset_prueba.docx")
+    document.save("report_dataset_prueba2.docx")

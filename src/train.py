@@ -1,12 +1,9 @@
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from skopt import gp_minimize
 from docx import Document
-from docx.shared import Inches, Mm, Pt
+from docx.shared import Inches
 from utils.training import train_inner_calibrated_binary_model
 from utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
-# PARA COMMENTS
-# Conseguir saber cuántos ejemplos de entrenamiento y cómo ha sido el desbalanceo de clases
-# Conseguir saber qué opción ha sido la elegida
 
 
 

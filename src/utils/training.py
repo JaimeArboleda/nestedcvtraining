@@ -1,7 +1,7 @@
 from sklearn.model_selection import StratifiedKFold, KFold
 from skopt.utils import use_named_args
 from skopt import gp_minimize
-from .pipes_and_transformers import MidasEnsembleClassifiersWithPipeline, wrap_pipeline, get_metadata_fit
+from .pipes_and_transformers import MidasEnsembleClassifiersWithPipeline, wrap_pipeline, get_metadata_fit, MidasIdentity
 from imblearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from copy import deepcopy
@@ -234,6 +234,8 @@ def train_inner_calibrated_binary_model(
 
     for key in dict_model_params.keys():
         pipeline_post_process = dict_model_params[key]["pipeline_post_process"]
+        if not pipeline_post_process:
+            pipeline_post_process = Pipeline([("identity", MidasIdentity())])
         model = dict_model_params[key]["model"]
         complete_steps = pipeline_post_process.steps + [("model", model)]
         complete_pipeline = Pipeline(complete_steps)
