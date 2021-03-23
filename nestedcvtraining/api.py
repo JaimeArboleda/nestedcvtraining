@@ -6,15 +6,6 @@ from nestedcvtraining.utils.training import train_inner_calibrated_binary_model
 from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
 
 
-
-
-
-
-
-
-
-
-
 def find_best_binary_model(
         X,
         y,
