@@ -3,9 +3,11 @@
 nestedcvtraining: Python package to search for best parameters, train and calibrate binary classification models using a Nested Cross-Validation approach.
 
 
-## nestedcvtraining Overview
+## Overview
 
-nestedcvtraining is a Python package to build ML pipelines for experimentation with Kedro, MLflow, and more
+nestedcvtraining is a Python package to search for best parameters, train and calibrate binary classification models using a Nested Cross-Validation approach.
+
+
 
 PipelineX provides the following options which can be used independently or together.
 
