@@ -2,8 +2,8 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from skopt import gp_minimize
 from docx import Document
 from docx.shared import Inches
-from utils.training import train_inner_calibrated_binary_model
-from utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
+from nestedcvtraining.utils.training import train_inner_calibrated_binary_model
+from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
 
 
 

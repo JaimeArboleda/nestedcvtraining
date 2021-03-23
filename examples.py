@@ -8,8 +8,8 @@ from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 import lightgbm as lgb
-from utils.pipes_and_transformers import MidasIdentity, OptionedPostProcessTransformer
-from train import find_best_binary_model
+from nestedcvtraining.utils.pipes_and_transformers import MidasIdentity, OptionedPostProcessTransformer
+from nestedcvtraining.api import find_best_binary_model
 
 dict_pipelines_post_process = {
     "option_1": Pipeline(
@@ -162,4 +162,4 @@ if __name__ == "__main__":
             "neg_brier_score",
         ],
     )
-    document.save("report_dataset_prueba2.docx")
+    document.save("report_dataset_prueba.docx")
