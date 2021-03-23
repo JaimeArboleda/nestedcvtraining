@@ -155,23 +155,23 @@ This pack
 
 ## Story behind nestedcvtraining
 
-When working on a classification project where we wanted to get a calibrated probability result, I found it wasn't very easy to do the following at once: 
+When working on a classification project where we wanted to get a calibrated probability prediction, I found it wasn't very easy to do the following things at once: 
 
-- Search for best parameters of model (and post-process pipeline if possible).
-- Train a model.
-- Calibrate the model.
-- Assess the quality of the model.
+- Searching for best parameters of model (and of post-process pipeline if possible).
+- Training a model.
+- Calibrating the model.
+- Assessing the quality of the model.
 
-The reason is that the class CalibratedClassifierCV of Sklearn needs an independent dataset in order to calibrate the base model. So if you want to perform a nested cross validation loop separate the optimization from the quality assessment, it's not easy to implement. CalibratedClassifierCV has essentially two fit methods: 
+The reason is that the class CalibratedClassifierCV of Sklearn needs an independent dataset in order to calibrate the base model. So if you want to perform a nested cross validation loop to separate the optimization procedure from the quality assessment, it's not easy to implement. CalibratedClassifierCV has essentially two fit methods: 
 - One with the "prefit" option, that trains a regressor to calibrate the probabilities (one has to take care that the data is independent from the data on where the base model was trained).
-- Another with the "cv" option, that performs a Cross-Validation to train a base model and then a regressor using the outer dataset, and builds an ensemble of models. 
+- Another one with the "cv" option, that performs a Cross-Validation to train several base models and regressors using the splits, and builds an ensemble of models. 
 
-In a nested cross validation, the second approach will be appropiated for the inner loop. But a problem arises: if one is trying to optimize some metric using a Bayesian Search, how can you measure this metric when you have a model that has been trained on the whole dataset? I tried to solve this accessing the inner base models of the CalibratedClassifierCV and evaluating the metric on the outer fold of the inner cross-validation. But this approach was not very elegant and finally I tried to "assemble" my own CalibratedClassifierCV by generating the inner split myself, training several base models (one for each fold), calibrating them using the "prefit" option and evaluating the loss metric of the Bayesian Search by averaging all metrics of all base models on their corresponding validation dataset. 
+In a nested cross validation, the second approach will be appropiated for the inner loop. But then a problem arises: if you are trying to optimize some metric using a Bayesian Search, how can you measure this metric when you have a model that has been trained on the whole dataset? I tried to solve this by accessing the inner base models of the CalibratedClassifierCV and evaluating the metric on the outer fold of the inner cross-validation. But this approach was not very elegant and finally I tried to "assemble" my own CalibratedClassifierCV by generating the inner split myself, training several base models (one for each fold), calibrating them using the "prefit" option and evaluating the loss metric of the Bayesian Search by averaging all metrics of all calibrated models on their corresponding validation dataset. 
 
-After I did that, I added more functionality to make it a more compact solution: 
-- A docx report of training, with many metrics and plots.
-- A simple way of optimizing post-processing steps in the same nested cross validation.
-- An option of using undersampling using this [idea](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf), that is implemented [here](https://github.com/w4k2/umce/blob/master/method.py).
+After I did that, and found that it worked, I added more functionality to make it a more complete solution: 
+- Generating a docx report of training, with many metrics and plots.
+- Adding a simple way of optimizing post-processing steps in the same nested cross validation.
+- Adding an option of using undersampling using this [idea](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf), that is implemented [here](https://github.com/w4k2/umce/blob/master/method.py).
 - And some other features... 
 
 ## Author
