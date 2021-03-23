@@ -155,26 +155,24 @@ This pack
 
 ## Story behind nestedcvtraining
 
-When I was working on a Deep Learning project, it was very time-consuming to develop the pipeline for experimentation.
-I wanted 2 features.
+When working on a classification project where we wanted to get a calibrated probability result, I found it wasn't very easy to do the following at once: 
 
-First one was an option to resume the pipeline using the intermediate data files instead of running the whole pipeline.
-This was important for rapid Machine/Deep Learning experimentation.
+- Search for best parameters of model (and post-process pipeline if possible).
+- Train a model.
+- Calibrate the model.
+- Assess the quality of the model.
 
-Second one was modularity, which means keeping the 3 components, task processing, file/database access, and DAG definition, independent.
-This was important for efficient software engineering.
+The reason is that the class CalibratedClassifierCV of Sklearn needs an independent dataset in order to calibrate the base model. So if you want to perform a nested cross validation loop separate the optimization from the quality assessment, it's not easy to implement. CalibratedClassifierCV has essentially two fit methods: 
+- One with the "prefit" option, that trains a regressor to calibrate the probabilities (one has to take care that the data is independent from the data on where the base model was trained).
+- Another with the "cv" option, that performs a Cross-Validation to train a base model and then a regressor using the outer dataset, and builds an ensemble of models. 
 
-After this project, I explored for a long-term solution.
-I researched about 3 Python packages for pipeline development, Airflow, Luigi, and Kedro, but none of these could be a solution.
+In a nested cross validation, the second approach will be appropiated for the inner loop. But a problem arises: if one is trying to optimize some metric using a Bayesian Search, how can you measure this metric when you have a model that has been trained on the whole dataset? I tried to solve this accessing the inner base models of the CalibratedClassifierCV and evaluating the metric on the outer fold of the inner cross-validation. But this approach was not very elegant and finally I tried to "assemble" my own CalibratedClassifierCV by generating the inner split myself, training several base models (one for each fold), calibrating them using the "prefit" option and evaluating the loss metric of the Bayesian Search by averaging all metrics of all base models on their corresponding validation dataset. 
 
-Luigi provided resuming feature, but did not offer modularity.
-Kedro offered modularity, but did not provide resuming feature.
-
-After this research, I decided to develop my own package that works on top of Kedro.
-Besides, I added syntactic sugars including Sequential API similar to Keras and PyTorch to define DAG.
-Furthermore, I added integration with MLflow, PyTorch, Ignite, pandas, OpenCV, etc. while working on more Machine/Deep Learning projects.
-
-After I confirmed my package worked well with the Kaggle competition, I released it as PipelineX.
+After I did that, I added more functionality to make it a more compact solution: 
+- A docx report of training, with many metrics and plots.
+- A simple way of optimizing post-processing steps in the same nested cross validation.
+- An option of using undersampling using this [idea](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf), that is implemented [here](https://github.com/w4k2/umce/blob/master/method.py).
+- And some other features... 
 
 ## Author
 
@@ -184,7 +182,7 @@ After I confirmed my package worked well with the Kaggle competition, I released
 
 ## Contributors are welcome!
 
-Pull requests are more than welcome!
+Pull requests and/or suggestions are more than welcome!
 
 ## License
 
