@@ -84,12 +84,13 @@ def color_row(row):
         cell._tc.get_or_add_tcPr().append(shading_elm_2)
 
 
-def add_plots_doc(report_doc, ys, y_probas):
+def add_plots_doc(report_doc, ys, y_probas, folds_index):
     report_doc.add_heading(f'Main plots', level=2)
 
     # Plot calibration curve
     report_doc.add_heading('Calibration plots', level=3)
     for index, y in enumerate(ys):
+        report_doc.add_heading(f'Calibration plot of fold {folds_index[index]}', level=4)
         memfile = plot_calibration_curve(y, y_probas[index])
         report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
         memfile.close()
@@ -97,6 +98,7 @@ def add_plots_doc(report_doc, ys, y_probas):
     # Plot precision recall curve
     report_doc.add_heading('Precision-recall curve plots', level=3)
     for index, y in enumerate(ys):
+        report_doc.add_heading(f'Precision-recall curve plot of fold {folds_index[index]}', level=4)
         memfile = plot_precision_recall_curve(y, y_probas[index])
         report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
         memfile.close()
@@ -104,6 +106,7 @@ def add_plots_doc(report_doc, ys, y_probas):
     # Plot roc curve
     report_doc.add_heading('ROC curve plots', level=3)
     for index, y in enumerate(ys):
+        report_doc.add_heading(f'ROC curve plot of fold {folds_index[index]}', level=4)
         memfile = plot_roc_curve(y, y_probas[index])
         report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
         memfile.close()
@@ -111,6 +114,7 @@ def add_plots_doc(report_doc, ys, y_probas):
     # Plot confussion matrix
     report_doc.add_heading('Confusion matrix', level=3)
     for index, y in enumerate(ys):
+        report_doc.add_heading(f'Confusion matrix of fold {folds_index[index]}', level=4)
         memfile = plot_confusion_matrix(y, y_probas[index])
         report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
         memfile.close()
@@ -118,6 +122,7 @@ def add_plots_doc(report_doc, ys, y_probas):
     # Plot histogram
     report_doc.add_heading('Histograms', level=3)
     for index, y in enumerate(ys):
+        report_doc.add_heading(f'Histogram of fold {folds_index[index]}', level=4)
         memfile = plot_histogram(y, y_probas[index])
         report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
         memfile.close()
@@ -174,10 +179,11 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
                     str(np.round(value_of_metric, 3)))
         # Add average
         report_doc.add_paragraph(f'For the selected optimization metric {loss_metric} '
-                                 f'the average score is {np.round(np.mean(metrics), 3)}.')
+                                 f'the average score is {np.round(np.mean(metrics), 3)}'
+                                 f', and the standard deviation is {np.round(np.std(metrics), 3)}.')
 
     if add_plots:
-        add_plots_doc(report_doc, ys, y_probas)
+        add_plots_doc(report_doc, ys, y_probas, folds_index)
 
     report_doc.add_heading('Comparison of several predictions to assess variance', level=2)
     table = report_doc.add_table(rows=len(y_val_var) + 1, cols=len(dict_models) + 3)
@@ -260,7 +266,7 @@ def write_intro_doc(report_doc, y, model_search_spaces,
             calibrated, loss_metric, size_variance_validation,
             skopt_func):
     report_doc.add_heading('Introduction', level=1)
-    report_doc.add_paragraph(f'Report of search and training made on {datetime.today().strftime("%Y-%m-%d")}')
+    report_doc.add_paragraph(f'Report of search and training made on {datetime.now().strftime("%B %d, %Y at %X")}.')
     report_doc.add_heading('Training data', level=2)
     p = report_doc.add_paragraph()
     p.add_run(f'There are {len(y)} training samples. ')

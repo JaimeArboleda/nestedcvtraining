@@ -52,7 +52,7 @@ if __name__ == "__main__":
                 Categorical(
                     ["option_1", "option_2", "option_3"], name="post_process__option"
                 ),
-                Integer(5, 15, name="model__max_depth"),
+                Integer(2, 8, name="model__max_depth"),
                 Real(0.05, 0.31, prior="log-uniform", name="model__learning_rate"),
                 Integer(1, 10, name="model__min_child_weight"),
                 Real(0.8, 1, prior="log-uniform", name="model__subsample"),
@@ -70,8 +70,6 @@ if __name__ == "__main__":
         verbose=True,
         k_inner_fold=10,
         k_outer_fold=10,
-        skip_inner_folds=[0, 1, 2, 4, 5, 6, 8],
-        skip_outer_folds=[0, 1, 2, 3, 4, 6, 8],
         n_initial_points=10,
         n_calls=10,
         loss_metric="average_precision",
