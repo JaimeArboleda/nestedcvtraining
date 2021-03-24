@@ -1,3 +1,4 @@
+import sklearn.pipeline
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from skopt import gp_minimize
 from docx import Document
@@ -5,6 +6,8 @@ from docx.shared import Inches
 from nestedcvtraining.utils.training import train_inner_model
 from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
 from collections import Counter
+from sklearn.base import TransformerMixin
+from skopt.space.transformers import Identity
 
 
 def find_best_binary_model(
@@ -193,12 +196,81 @@ def find_best_binary_model(
     return final_model, merge_docs(outer_report_doc, inner_report_doc)
 
 
+class OptionedPostProcessTransformer(TransformerMixin):
+    """This class converts a dictionary of different options of post-process
+    (each option will be a fully defined pipeline) in a transformer that
+    has only one parameter, the option.
+    In this way, you can perform a bayesian optimization search including a postprocess
+    pipeline that uses this set of categorical fixed options.
+
+    Example of input dict:
+        dict_pipelines_post_process = {
+        "option_1": Pipeline(
+            [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
+        ),
+        "option_2": Pipeline(
+            [
+                ("scale", StandardScaler()),
+                ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
+            ]
+        ),
+        "option_3": Pipeline([("identity", MidasIdentity())])
+        }
+    """
+
+    def __init__(self, dict_pipelines):
+        if not self._validate_dict(dict_pipelines):
+            raise ValueError("The dictionary is not well formed. Please check the docs and examples. ")
+        if not self._validate_resamplers(dict_pipelines):
+            raise ValueError("OptionedPostProcessTransformer does not "
+                             "support resamplers inside ")
+        self.dict_pipelines = dict_pipelines
+        self.option = list(dict_pipelines.keys())[0]
+        super().__init__()
+
+    def fit(self, X, y=None):
+        self.dict_pipelines[self.option].fit(X, y)
+        return self
+
+    def set_params(self, **params):
+        self.option = params['option']
+        return self
+
+    def transform(self, X):
+        return self.dict_pipelines[self.option].transform(X)
+
+    def fit_transform(self, X, y=None):
+        return self.dict_pipelines[self.option].fit_transform(X, y)
+
+    def _validate_dict(self, dict_pipelines):
+        check_pipelines = any(
+            [
+                not isinstance(pipeline, sklearn.pipeline.Pipeline)
+                for pipeline in dict_pipelines.values()
+            ]
+        )
+        return not check_pipelines
+
+    def _validate_resamplers(self, dict_pipelines):
+        all_steps = []
+        for pipeline in dict_pipelines.values():
+            all_steps.extend(pipeline.steps)
+        exists_resampler = any(
+            [
+                hasattr(step[1], "fit_resample")
+                for step in all_steps
+            ]
+        )
+        return not exists_resampler
 
 
-
-
-
-
+class MidasIdentity(Identity):
+    """
+    Convenience class for creating a Pipeline that does not perform any transformation.
+    It can be handy when in combination with OptionedPostProcessTransformer.
+    """
+    def fit(self, X, y):
+        return self
 
 
 

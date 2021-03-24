@@ -7,8 +7,7 @@ from xgboost import XGBClassifier
 from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
-from nestedcvtraining.utils.pipes_and_transformers import MidasIdentity, OptionedPostProcessTransformer
-from nestedcvtraining.api import find_best_binary_model
+from nestedcvtraining.api import find_best_binary_model, MidasIdentity, OptionedPostProcessTransformer
 
 dict_pipelines_post_process = {
     "option_1": Pipeline(

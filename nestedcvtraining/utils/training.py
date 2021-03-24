@@ -1,6 +1,6 @@
 from sklearn.model_selection import StratifiedKFold, KFold
 from skopt.utils import use_named_args
-from .pipes_and_transformers import MidasEnsembleClassifiersWithPipeline, wrap_pipeline, get_metadata_fit, MidasIdentity
+from .pipes_and_transformers import MidasEnsembleClassifiersWithPipeline, wrap_pipeline, get_metadata_fit, _MidasIdentity
 from imblearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from copy import deepcopy
@@ -206,7 +206,7 @@ def train_inner_model(X, y, model_search_spaces,
     for key in model_search_spaces.keys():
         pipeline_post_process = model_search_spaces[key]["pipeline_post_process"]
         if not pipeline_post_process:
-            pipeline_post_process = Pipeline([("identity", MidasIdentity())])
+            pipeline_post_process = Pipeline([("identity", _MidasIdentity())])
         model = model_search_spaces[key]["model"]
         complete_steps = pipeline_post_process.steps + [("model", model)]
         complete_pipeline = Pipeline(complete_steps)

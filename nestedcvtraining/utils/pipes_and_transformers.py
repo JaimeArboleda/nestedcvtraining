@@ -1,15 +1,17 @@
-from sklearn.base import TransformerMixin
 from imblearn.pipeline import Pipeline
-from skopt.space.transformers import Identity
 import numpy as np
 from collections import Counter
 from .reporting import MetadataFit, prop_minority_to_rest_class
+from skopt.space.transformers import Identity
 
 
-class MidasIdentity(Identity):
+class _MidasIdentity(Identity):
+    """
+    Convenience class for creating a Pipeline that does not perform any transformation.
+    It can be handy when in combination with OptionedPostProcessTransformer.
+    """
     def fit(self, X, y):
         return self
-
 
 class MidasInspectTransformer(Identity):
     def fit(self, X, y):
@@ -75,37 +77,3 @@ class MidasEnsembleClassifiersWithPipeline:
         return mean_proba
 
 
-class OptionedPostProcessTransformer(TransformerMixin):
-
-    def __init__(self, dict_pipelines):
-        all_steps = []
-        for pipeline in dict_pipelines.values():
-            all_steps.extend(pipeline.steps)
-        exists_resampler = any(
-            [
-                hasattr(step[1], "fit_resample")
-                for step in all_steps
-            ]
-        )
-        if exists_resampler:
-            raise ValueError("OptionedPostProcessTransformer does not "
-                             "support resamplers inside ")
-
-        # TODO: Check if there is a resampler inside
-        self.dict_pipelines = dict_pipelines
-        self.option = list(dict_pipelines.keys())[0]
-        super().__init__()
-
-    def fit(self, X, y=None):
-        self.dict_pipelines[self.option].fit(X, y)
-        return self
-
-    def set_params(self, **params):
-        self.option = params['option']
-        return self
-
-    def transform(self, X):
-        return self.dict_pipelines[self.option].transform(X)
-
-    def fit_transform(self, X, y=None):
-        return self.dict_pipelines[self.option].fit_transform(X, y)
