@@ -186,14 +186,153 @@ A concise explanation of the parameters is the following:
 -  verbose = False just limit some prints.
 -  Build_final_model, if False, does not train a final model using all data. 
 
+The other things in the api are those classses:
+
+```
+class OptionedPostProcessTransformer(TransformerMixin):
+    """This class converts a dictionary of different options of post-process
+    (each option will be a fully defined pipeline) in a transformer that
+    has only one parameter, the option.
+    In this way, you can perform a bayesian optimization search including a postprocess
+    pipeline that uses this set of categorical fixed options.
+
+    Example of input dict:
+        dict_pipelines_post_process = {
+        "option_1": Pipeline(
+            [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
+        ),
+        "option_2": Pipeline(
+            [
+                ("scale", StandardScaler()),
+                ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
+            ]
+        ),
+        "option_3": Pipeline([("identity", MidasIdentity())])
+        }
+    """
+
+class MidasIdentity(Identity):
+    """
+    Convenience class for creating a Pipeline that does not perform any transformation.
+    It can be handy when in combination with OptionedPostProcessTransformer.
+    """
+    def fit(self, X, y):
+        return self
+
+```
+Both the classes and the function will be more clarified in the examples section.
+
 ## Limitations
 
 - For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification.
 - The model returned cannot be fitted, because it is an ensemble model built using the inner cross-validation procedure and fitting it should be done only by using this procedure.
+- The OptionedPostProcessTransformer cannot have resamplers inside any of the options. 
 
 ## Examples
 
-This pack
+Example 1: 
+
+Suppose you have several post-processing options and you want to find which one works best for your model. Then, you can use this class to build a transformer that, depending on the option, will make one or the other transformation, and the bayesian search procedure can find the optimum value of the option (and all the other hyperparameters of the model). 
+
+You need to define a dict like that: 
+
+´´´
+dict_pipelines_post_process = {
+    "option_1": Pipeline(
+        [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
+    ),
+    "option_2": Pipeline(
+        [
+            ("scale", StandardScaler()),
+            ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
+        ]
+    ),
+    "option_3": Pipeline([("identity", MidasIdentity())])
+}
+´´´
+
+(option_3 is just doing nothing, and you can set this option by using the MidasIdentity transformer in the api). 
+
+And then, when defining the search space for the model, you can set this optioned pipeline as follows: 
+
+```
+dict_models = {
+        "xgboost": {
+            "model": XGBClassifier(),
+            "pipeline_post_process": Pipeline(
+                [
+                    (
+                        "post_process",
+                        OptionedPostProcessTransformer(dict_pipelines_post_process),
+                    ),
+                    ("resample", SMOTE()),
+                ]
+            ),
+            "search_space": [
+                Categorical([True, False], name="undersampling_majority_class"),
+                Integer(5, 6, name="max_k_undersampling"),
+                Categorical(["minority", "all"], name="resample__sampling_strategy"),
+                Categorical(
+                    ["option_1", "option_2", "option_3"], name="post_process__option"
+                ),
+                Integer(5, 15, name="model__max_depth"),
+                Real(0.05, 0.31, prior="log-uniform", name="model__learning_rate"),
+                Integer(1, 10, name="model__min_child_weight"),
+                Real(0.8, 1, prior="log-uniform", name="model__subsample"),
+                Real(0.13, 0.8, prior="log-uniform", name="model__colsample_bytree"),
+                Real(0.1, 10, prior="log-uniform", name="model__scale_pos_weight"),
+                Categorical(["binary:logistic"], name="model__objective"),
+            ],
+        },
+        "random_forest": {
+            "model": RandomForestClassifier(),
+            "pipeline_post_process": None,
+            "search_space": [
+                Categorical([True, False], name="undersampling_majority_class"),
+                Integer(0, 1, name="model__bootstrap"),
+                Integer(10, 100, name="model__n_estimators"),
+                Integer(2, 10, name="model__max_depth"),
+                Integer(5, 20, name="model__min_samples_split"),
+                Integer(1, 4, name="model__min_samples_leaf"),
+                Categorical(["auto", "sqrt"], name="model__max_features"),
+                Categorical(
+                    ["balanced", "balanced_subsample"], name="model__class_weight"
+                ),
+            ],
+        },
+    }
+```
+
+And you can invoke the main function as follows: 
+
+```
+    best_model, document = find_best_binary_model(
+        X=X,
+        y=y,
+        model_search_spaces=dict_models,
+        verbose=True,
+        k_inner_fold=10,
+        k_outer_fold=10,
+        skip_inner_folds=[0, 2, 4, 6, 8, 9],
+        skip_outer_folds=[0, 2, 4, 6, 8],
+        n_initial_points=10,
+        n_calls=10,
+        loss_metric="average_precision",
+        peeking_metrics=[
+            "roc_auc",
+            "neg_log_loss",
+            "average_precision",
+            "neg_brier_score",
+        ],
+        skopt_func=gbrt_minimize
+    )
+```
+
+This means that: 
+- Two models will be tried (for each model, all optimization procedure, using n_inicial_points+n_initial_calls will be made; each model is completely independent from the other).
+- XGBClassifier() has a two step pipeline, first a transformation (that in itself can be scaling + PCA -option_1-, scaling + SelectKBest -option_2- or nothing -option_3-) and then a SMOTE() for increasing samples of the minority class.  
+- XGBClassifier() has a search space that plays with some parameters of the model, some parameters of the post-process (the option and the resampler strategy) and also it uses some "obscure" parameters that are not part neither of the model nor of the pipeline. This two parameters specify whether and how to carry out an undersampling of majority class ensemble strategy as described [here](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf). This is compatible with having a resampler, because after the undersampling of majority class, a resampler can help make the classes even more balanced. 
+- RandomForestClassifier(), on the other hand, has not a pipeline of post-process transformations, so the search parameters are mainly of the model. 
 
 ## Story behind nestedcvtraining
 
