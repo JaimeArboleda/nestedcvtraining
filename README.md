@@ -28,7 +28,7 @@ In other words, the package facilitates:
 <img src="https://mlfromscratch.com/content/images/size/w2000/2019/12/ncv.png">
 Nested Cross Validation Scheme
 </p>
-Image taken from [here](https://mlfromscratch.com/nested-cross-validation-python-code), by the way, a good source of explanation. 
+Image taken from [here](https://mlfromscratch.com/nested-cross-validation-python-code), s good source of Machine Learning explanations. 
 
 ## Install nestedcvtraining
 
