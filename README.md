@@ -42,9 +42,13 @@ How does the training in the inner loop takes place?
 - If, in addition, the calibrated option is selected, all base models of the ensemble will be calibrated (each one of them, by using the corresponding inner validation dataset). 
 
 This package follows all these rules and recommended practices: 
-- You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
-- If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
-- If you use cross validation for model selection, once you have checked that the model selection procedure is good (i.e. it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
+1. You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
+2. If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
+3. If you use cross validation for model selection, once you have checked that the model selection procedure is good (i.e. it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
+
+The second point is not completely true. In this package, if there is no resampler in the post-process pipeline, then, for each outer fold, the whole inner dataset is fitted using the post-process pipeline, because the opposite is less efficient. This of course leaves out the test set of the outer loop, so this test set is transformed using the fitted pipeline and there is no data leakage that could affect the quality assessment of the trained models. 
+
+If there is a resampler, the pipeline is fitted on each inner training set, because the metrics should be measured on datasets with the same class ratios as the original. This is computationally more expensive but safer. This means that, for example, if there is a scaler in the pipeline, and you have 3 inner folds, 3 scalers will be fitted. As the final model is an ensemble of all models for each fold, when making a real prediction, three ways of scaling will be used, three models and then the result will be averaged. 
 
 ## Install nestedcvtraining
 
@@ -94,7 +98,8 @@ def find_best_binary_model(
         Feature set.
 
     y : np.array
-        Classification target to predict.
+        Classification target to predict. For the moment only binary labels are allowed, and
+        values are supposed to be {0, 1} or {-1, 1}
 
     model_search_spaces : Dict[str : List[List[skopt.Space]]
         Dict of models to try inside of the inner loops. For each model, there is
@@ -167,16 +172,171 @@ def find_best_binary_model(
     """
 ```
 
+A concise explanation of the parameters is the following: 
+- X and y are, as usual, the feature set and target. 
+- model_search_space is a dict of dicts made to specify how many models will be trained (it can be one or several), and, for each model: 
+  -  The pipeline of post-process transformers (it can be an sklearn pipeline or an imblearn pipeline if there are resamplers inside).
+  -  The search space for the bayesian optimization algorithm. This search space can have parameters of the model and of each step of the pipeline, using a prefix as documented in sklearn docs. 
+-  k_outer_fold is the number of folds in the outer cross-validation.
+-  skip_outer_folds is a list (can be empty) of outer folds to skip. As it can be computationally expensive to use a lot of folds, but at the same time using more folds increase the size of the training datasets, this parameter can be handy when one wants to have bigger training datasets without wanting to train a model for each fold. 
+-  k_inner_fold and skip_inner_folds have the same meaning, but for the inner loop.
+-  n_initial_points and n_calls are parameters directly passed to the optimizer function (gp_minimize by default).
+-  calibrated allows you to specify if you want to have calibrated models or not. 
+-  loss_metric is the metric used for the optimization procedure. 
+-  peeking_metrics is a list of metrics that will be analyzed (but not used for minization) in the process. Its only purpose is enhance the reporting. 
+-  report_levels is used to set the size of the reporting, as specified. It can be reduced if computationally the process is too expensive. 
+-  size_variance_validation is the number of instances that will be completely left out in order to make a prediction on them for all ensemble models. This will be added to the report doc and can help assess if the models have big variance on individual predictions or not. 
+-  skopt_func is the optimization function. You can check skopt docs for alternatives to the default.
+-  verbose = False just limit some prints.
+-  Build_final_model, if False, does not train a final model using all data. 
 
+The function returns the model (which is an ensemble model that includes the pipeline, so that you can use it to make predictions on data in the same format as the original dataset) and a report_doc (depending on the report_level, more or less things will be added; you can check the example report docs on the project repository). 
+
+The other things in the api are those classses:
+
+```
+class OptionedPostProcessTransformer(TransformerMixin):
+    """This class converts a dictionary of different options of post-process
+    (each option will be a fully defined pipeline) in a transformer that
+    has only one parameter, the option.
+    In this way, you can perform a bayesian optimization search including a postprocess
+    pipeline that uses this set of categorical fixed options.
+
+    Example of input dict:
+        dict_pipelines_post_process = {
+        "option_1": Pipeline(
+            [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
+        ),
+        "option_2": Pipeline(
+            [
+                ("scale", StandardScaler()),
+                ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
+            ]
+        ),
+        "option_3": Pipeline([("identity", MidasIdentity())])
+        }
+    """
+
+class MidasIdentity(Identity):
+    """
+    Convenience class for creating a Pipeline that does not perform any transformation.
+    It can be handy when in combination with OptionedPostProcessTransformer.
+    """
+    def fit(self, X, y):
+        return self
+
+```
+Both the classes and the function will be more clarified in the examples section.
 
 ## Limitations
 
 - For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification.
 - The model returned cannot be fitted, because it is an ensemble model built using the inner cross-validation procedure and fitting it should be done only by using this procedure.
+- The OptionedPostProcessTransformer cannot have resamplers inside any of the options. 
 
 ## Examples
 
-This pack
+Suppose you have several post-processing options and you want to find which one works best for your model. Then, you can use this class to build a transformer that, depending on the option, will make one or the other transformation, and the bayesian search procedure can find the optimum value of the option (and all the other hyperparameters of the model). 
+
+You need to define a dict like that: 
+
+```
+dict_pipelines_post_process = {
+    "option_1": Pipeline(
+        [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
+    ),
+    "option_2": Pipeline(
+        [
+            ("scale", StandardScaler()),
+            ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
+        ]
+    ),
+    "option_3": Pipeline([("identity", MidasIdentity())])
+}
+```
+
+(option_3 is just doing nothing, and you can set this option by using the MidasIdentity transformer in the api). 
+
+And then, when defining the search space for the model, you can set this optioned pipeline as follows: 
+
+```
+dict_models = {
+        "xgboost": {
+            "model": XGBClassifier(),
+            "pipeline_post_process": Pipeline(
+                [
+                    (
+                        "post_process",
+                        OptionedPostProcessTransformer(dict_pipelines_post_process),
+                    ),
+                    ("resample", SMOTE()),
+                ]
+            ),
+            "search_space": [
+                Categorical([True, False], name="undersampling_majority_class"),
+                Integer(5, 6, name="max_k_undersampling"),
+                Categorical(["minority", "all"], name="resample__sampling_strategy"),
+                Categorical(
+                    ["option_1", "option_2", "option_3"], name="post_process__option"
+                ),
+                Integer(5, 15, name="model__max_depth"),
+                Real(0.05, 0.31, prior="log-uniform", name="model__learning_rate"),
+                Integer(1, 10, name="model__min_child_weight"),
+                Real(0.8, 1, prior="log-uniform", name="model__subsample"),
+                Real(0.13, 0.8, prior="log-uniform", name="model__colsample_bytree"),
+                Real(0.1, 10, prior="log-uniform", name="model__scale_pos_weight"),
+                Categorical(["binary:logistic"], name="model__objective"),
+            ],
+        },
+        "random_forest": {
+            "model": RandomForestClassifier(),
+            "pipeline_post_process": None,
+            "search_space": [
+                Categorical([True, False], name="undersampling_majority_class"),
+                Integer(0, 1, name="model__bootstrap"),
+                Integer(10, 100, name="model__n_estimators"),
+                Integer(2, 10, name="model__max_depth"),
+                Integer(5, 20, name="model__min_samples_split"),
+                Integer(1, 4, name="model__min_samples_leaf"),
+                Categorical(["auto", "sqrt"], name="model__max_features"),
+                Categorical(
+                    ["balanced", "balanced_subsample"], name="model__class_weight"
+                ),
+            ],
+        },
+    }
+```
+
+And you can invoke the main function as follows: 
+
+```
+    best_model, document = find_best_binary_model(
+        X=X,
+        y=y,
+        model_search_spaces=dict_models,
+        verbose=True,
+        k_inner_fold=10,
+        k_outer_fold=10,
+        skip_inner_folds=[0, 2, 4, 6, 8, 9],
+        skip_outer_folds=[0, 2, 4, 6, 8],
+        n_initial_points=10,
+        n_calls=10,
+        loss_metric="average_precision",
+        peeking_metrics=[
+            "roc_auc",
+            "neg_log_loss",
+            "average_precision",
+            "neg_brier_score",
+        ],
+        skopt_func=gbrt_minimize
+    )
+```
+
+This means that: 
+- Two models will be tried (for each model, all optimization procedure, using n_inicial_points+n_initial_calls will be made; each model is completely independent from the other).
+- XGBClassifier() has a two step pipeline, first a transformation (that in itself can be scaling + PCA -option_1-, scaling + SelectKBest -option_2- or nothing -option_3-) and then a SMOTE() for increasing samples of the minority class.  
+- XGBClassifier() has a search space that plays with some parameters of the model, some parameters of the post-process (the option and the resampler strategy) and also it uses some "obscure" parameters that are not part neither of the model nor of the pipeline. This two parameters specify whether and how to carry out an undersampling of majority class ensemble strategy as described [here](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf). This is compatible with having a resampler, because after the undersampling of majority class, a resampler can help make the classes even more balanced. 
+- RandomForestClassifier(), on the other hand, has not a pipeline of post-process transformations, so the search parameters are all (but the undersampling just explained) of the model. 
 
 ## Story behind nestedcvtraining
 
