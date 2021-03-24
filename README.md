@@ -52,6 +52,8 @@ This package follows all these rules and recommended practices:
 pip install nestedcvtraining
 ```
 
+As usual, you need all libraries listed in requierements.txt
+
 ## Getting Started with nestedcvtraining
 
 This package has only one main entry point with many options. It has also one utility that may come in handy. 
