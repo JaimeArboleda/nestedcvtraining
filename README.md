@@ -31,6 +31,23 @@ Nested Cross Validation Scheme
 
 Image taken from [here](https://mlfromscratch.com/nested-cross-validation-python-code), a good source of Machine Learning explanations. 
 
+Nested Cross Validation aims at two things: 
+- The Cross Validation part reduces the variance of all metrics and estimators by averaging them among several folds. 
+- The nested part ensures that the procedure for model selection does not have an influence on the model quality assessment (they take separated datasets). 
+
+This package performs nested cross validation in this way: 
+- The outer loop is used only for estimating the error of the model built in the inner loop. 
+- The inner loop is used only for training a model by selecting the best parameters and hyperparameters for it. 
+
+How does the training in the inner loop takes place? 
+- If on the inner loop there are k inner folds, then for each combination of parameters and hyperparameters performed by the bayesian search engine, k models will be trained, and an ensemble model with all of them will be served (this ensemble model predicts using the average of all base models). 
+- If, in addition, the calibrated option is selected, all base models of the ensemble will be calibrated (each one of them, by using the corresponding inner test dataset). 
+
+By using this package, you are implicitly following all these rules: 
+- You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
+- If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
+- If you use cross validation for model selection, once you have checked that the model selection procedure is good (it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
+
 ## Install nestedcvtraining
 
 ```bash
