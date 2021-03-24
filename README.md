@@ -94,7 +94,8 @@ def find_best_binary_model(
         Feature set.
 
     y : np.array
-        Classification target to predict.
+        Classification target to predict. For the moment only binary labels are allowed, and
+        values are supposed to be {0, 1} or {-1, 1}
 
     model_search_spaces : Dict[str : List[List[skopt.Space]]
         Dict of models to try inside of the inner loops. For each model, there is
@@ -167,7 +168,23 @@ def find_best_binary_model(
     """
 ```
 
-
+A concise explanation of the parameters is the following: 
+- X and y are, as usual, the feature set and target. 
+- model_search_space is a dict of dicts made to specify how many models will be trained (it can be one or several), and, for each model: 
+  -  The pipeline of post-process transformers (it can be an sklearn pipeline or an imblearn pipeline if there are resamplers inside).
+  -  The search space for the bayesian optimization algorithm. This search space can have parameters of the model and of each step of the pipeline, using a prefix as documented in sklearn docs. 
+-  k_outer_fold is the number of folds in the outer cross-validation.
+-  skip_outer_folds is a list (can be empty) of outer folds to skip. As it can be computationally expensive to use a lot of folds, but at the same time using more folds increase the size of the training datasets, this parameter can be handy when one wants to have bigger training datasets without wanting to train a model for each fold. 
+-  k_inner_fold and skip_inner_folds have the same meaning, but for the inner loop.
+-  n_initial_points and n_calls are parameters directly passed to the optimizer function (gp_minimize by default).
+-  calibrated allows you to specify if you want to have calibrated models or not. 
+-  loss_metric is the metric used for the optimization procedure. 
+-  peeking_metrics is a list of metrics that will be analyzed (but not used for minization) in the process. Its only purpose is enhance the reporting. 
+-  report_levels is used to set the size of the reporting, as specified. It can be reduced if computationally the process is too expensive. 
+-  size_variance_validation is the number of instances that will be completely left out in order to make a prediction on them for all ensemble models. This will be added to the report doc and can help assess if the models have big variance on individual predictions or not. 
+-  skopt_func is the optimization function. You can check skopt docs for alternatives to the default.
+-  verbose = False just limit some prints.
+-  Build_final_model, if False, does not train a final model using all data. 
 
 ## Limitations
 
