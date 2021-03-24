@@ -171,6 +171,9 @@ def find_best_binary_model(
     if size_variance_validation < 0 or size_variance_validation > len(y):
         raise ValueError("size_variance_validation cannot be negative nor bigger than number of instances")
 
+    if size_variance_validation > 0 and size_variance_validation < len(counter):
+        raise ValueError("size_variance_validation, if not zero, cannot be less than number of classes")
+
     if report_level not in [0, 1, 10, 11]:
         raise ValueError("report_level must be either 0, 1, 10 or 11")
 
@@ -198,18 +201,23 @@ def find_best_binary_model(
         outer_report_doc = None
         inner_report_doc = None
 
-    X, X_val_var, y, y_val_var = train_test_split(X, y, test_size=size_variance_validation, random_state=42, stratify=y)
+    X_val_var = []
+    y_val_var = []
+    if size_variance_validation > 0:
+        X, X_val_var, y, y_val_var = train_test_split(X, y, test_size=size_variance_validation, random_state=42, stratify=y)
 
     outer_cv = StratifiedKFold(n_splits=k_outer_fold)
     dict_inner_models = []
     outer_Xs = []
     outer_ys = []
     folds_index = []
-    inner_report_doc.add_heading(f'Report of inner trainings', level=1)
+    if inner_report_doc:
+        inner_report_doc.add_heading(f'Report of inner trainings', level=1)
     for k, (train_index, test_index) in enumerate(outer_cv.split(X, y)):
         if k not in skip_outer_folds:
             folds_index.append(k)
-            inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
+            if inner_report_doc:
+                inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
             X_hold_out = X[test_index] if report_level in [1, 11] else []
             y_hold_out = y[test_index] if report_level in [1, 11] else []
             inner_model, model_params, model_comments = train_inner_model(
@@ -225,7 +233,8 @@ def find_best_binary_model(
 
             outer_Xs.append(X[test_index])
             outer_ys.append(y[test_index])
-    outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
+    if outer_report_doc:
+        outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
     add_plots = True if report_level > 9 else False
     evaluate_model(
         dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys,

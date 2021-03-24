@@ -274,7 +274,7 @@ def train_inner_model(X, y, model_search_spaces,
     best_model, index_best_model = find_best_model(list_models, list_metrics)
     if verbose:
         print("Best model found")
-    if len(y_hold_out) > 0:
+    if report_doc:
         write_train_report(
             report_doc=report_doc, list_params=list_params, list_metrics=list_metrics,
             list_holdout_metrics=list_holdout_metrics, peeking_metrics=peeking_metrics,

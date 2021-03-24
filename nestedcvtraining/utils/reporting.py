@@ -135,7 +135,7 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
         y_probas.append(dict_model['model'].predict_proba(Xs[index])[:, 1])
 
     # Add a table for comparison of metrics
-    if peeking_metrics:
+    if peeking_metrics and report_doc:
         report_doc.add_heading(f'Winner models of each fold and main metrics', level=2)
         table = report_doc.add_table(rows=len(dict_models) + 1, cols=len(peeking_metrics) + 4)
         table.style = 'TableGrid'
@@ -182,45 +182,46 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
                                  f'the average score is {np.round(np.mean(metrics), 3)}'
                                  f', and the standard deviation is {np.round(np.std(metrics), 3)}.')
 
-    if add_plots:
+    if add_plots and report_doc:
         add_plots_doc(report_doc, ys, y_probas, folds_index)
 
-    report_doc.add_heading('Comparison of several predictions to assess variance', level=2)
-    table = report_doc.add_table(rows=len(y_val_var) + 1, cols=len(dict_models) + 3)
-    table.style = 'TableGrid'
-    table.autofit = False
-    # Fill first row of table
-    first_row = table.rows[0]
-    first_row.cells[0].width = Inches(SIZE_FOLD_COL)
-    first_row.cells[0].paragraphs[0].add_run('Instance').bold = True
-    first_row.cells[1].width = Inches(SIZE_FOLD_COL)
-    first_row.cells[1].paragraphs[0].add_run('Real label').bold = True
-    for i in range(len(dict_models)):
-        first_row.cells[i+2].width = Inches(SIZE_METRIC_COL)
-        first_row.cells[i+2].paragraphs[0].add_run(f'Prediction by model of fold {folds_index[i]}').bold = True
-    first_row.cells[len(dict_models) + 2].width = Inches(SIZE_METRIC_COL)
-    first_row.cells[len(dict_models) + 2].paragraphs[0].add_run('Standard deviation in predictions of this instance').bold = True
-    # Fill other rows
-    stds = []
-    for index, y in enumerate(y_val_var):
-        predictions = []
-        row_index = index + 1
-        row = table.rows[row_index]
-        row.cells[0].width = Inches(SIZE_FOLD_COL)
-        row.cells[0].paragraphs[0].add_run(str(row_index))
-        row.cells[1].width = Inches(SIZE_FOLD_COL)
-        row.cells[1].paragraphs[0].add_run(str(y))
-        for i, dict_model in enumerate(dict_models):
-            row.cells[i + 2].width = Inches(SIZE_METRIC_COL)
-            prediction = dict_model['model'].predict_proba(X_val_var[[index]])[:, 1]
-            predictions.append(prediction)
-            row.cells[i + 2].paragraphs[0].add_run(str(np.round(prediction[0], 3)))
-        row.cells[len(dict_models) + 2].width = Inches(SIZE_METRIC_COL)
-        std = np.std(predictions)
-        stds.append(std)
-        row.cells[len(dict_models) + 2].paragraphs[0].add_run(str(np.round(std, 3)))
-
-    report_doc.add_paragraph(f'The average standard deviation is {np.round(np.mean(stds),3)}')
+    if len(y_val_var) > 0 and report_doc:
+        report_doc.add_heading('Comparison of several predictions to assess variance', level=2)
+        table = report_doc.add_table(rows=len(y_val_var) + 1, cols=len(dict_models) + 3)
+        table.style = 'TableGrid'
+        table.autofit = False
+        # Fill first row of table
+        first_row = table.rows[0]
+        first_row.cells[0].width = Inches(SIZE_FOLD_COL)
+        first_row.cells[0].paragraphs[0].add_run('Instance').bold = True
+        first_row.cells[1].width = Inches(SIZE_FOLD_COL)
+        first_row.cells[1].paragraphs[0].add_run('Real label').bold = True
+        for i in range(len(dict_models)):
+            first_row.cells[i + 2].width = Inches(SIZE_METRIC_COL)
+            first_row.cells[i + 2].paragraphs[0].add_run(f'Prediction by model of fold {folds_index[i]}').bold = True
+        first_row.cells[len(dict_models) + 2].width = Inches(SIZE_METRIC_COL)
+        first_row.cells[len(dict_models) + 2].paragraphs[0].add_run(
+            'Standard deviation in predictions of this instance').bold = True
+        # Fill other rows
+        stds = []
+        for index, y in enumerate(y_val_var):
+            predictions = []
+            row_index = index + 1
+            row = table.rows[row_index]
+            row.cells[0].width = Inches(SIZE_FOLD_COL)
+            row.cells[0].paragraphs[0].add_run(str(row_index))
+            row.cells[1].width = Inches(SIZE_FOLD_COL)
+            row.cells[1].paragraphs[0].add_run(str(y))
+            for i, dict_model in enumerate(dict_models):
+                row.cells[i + 2].width = Inches(SIZE_METRIC_COL)
+                prediction = dict_model['model'].predict_proba(X_val_var[[index]])[:, 1]
+                predictions.append(prediction)
+                row.cells[i + 2].paragraphs[0].add_run(str(np.round(prediction[0], 3)))
+            row.cells[len(dict_models) + 2].width = Inches(SIZE_METRIC_COL)
+            std = np.std(predictions)
+            stds.append(std)
+            row.cells[len(dict_models) + 2].paragraphs[0].add_run(str(np.round(std, 3)))
+        report_doc.add_paragraph(f'The average standard deviation is {np.round(np.mean(stds),3)}')
     return
 
 
