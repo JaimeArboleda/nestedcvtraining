@@ -25,7 +25,7 @@ dict_pipelines_post_process = {
 
 if __name__ == "__main__":
     dataset_prueba = pd.read_csv(
-        "https://raw.githubusercontent.com/jbrownlee/Datasets/master/new-thyroid.csv", header=None
+        "./datasets/new-thyroid.csv", header=None
     )
     values = dataset_prueba.values
     X, y = values[:, :-1], values[:, -1]

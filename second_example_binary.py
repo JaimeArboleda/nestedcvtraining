@@ -26,7 +26,7 @@ dict_pipelines_post_process = {
 if __name__ == "__main__":
 
     df = pd.read_csv(
-        'https://raw.githubusercontent.com/jbrownlee/Datasets/master/haberman.csv', header=None
+        './datasets/haberman.csv', header=None
     )
     df[df.columns[-1]] = df[df.columns[-1]].replace(1, 0).replace(2, 1)
     values = df.values

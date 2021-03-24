@@ -26,7 +26,7 @@ dict_pipelines_post_process = {
 
 if __name__ == "__main__":
     dataset_prueba = pd.read_csv(
-        "https://raw.githubusercontent.com/shraddha-an/cleansed-datasets/master/credit_approval.csv"
+        "./datasets/credit_approval.csv"
     )
     y = dataset_prueba["Target"].to_numpy()
     X = dataset_prueba[[c for c in dataset_prueba.columns if c != "Target"]].to_numpy()
