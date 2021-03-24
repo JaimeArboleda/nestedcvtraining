@@ -171,7 +171,8 @@ def find_best_binary_model(
 
 ## Limitations
 
-For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification. 
+- For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification.
+- The model returned cannot be fitted, because it is an ensemble model built using the inner cross-validation procedure and fitting it should be done only by using this procedure.
 
 ## Examples
 

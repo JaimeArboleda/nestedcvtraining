@@ -58,7 +58,7 @@ class MidasEnsembleClassifiersWithPipeline:
 
     def fit(self, X, y):
         # It's already fitted
-        return
+        raise NotImplementedError("This ensemble model is already fitted and cannot be refitted")
 
     def predict(self, X):
         return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
