@@ -23,7 +23,7 @@ In other words, the package facilitates:
 ## How it works
 
 <p align="center">
-<img src="https://mlfromscratch.com/content/images/size/w2000/2019/12/ncv.png">
+<img src="https://github.com/JaimeArboleda/nestedcvtraining/blob/master/images/ncv.png">
 Nested Cross Validation Scheme
 </p>
 
