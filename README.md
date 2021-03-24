@@ -1,6 +1,6 @@
 # nestedcvtraining
 
-nestedcvtraining: Python package to search for best parameters, train and calibrate binary classification models using a Nested Cross-Validation approach.
+nestedcvtraining: Python package to search for best parameters, train, (optionally) calibrate and validate the error of classification models using a Nested Cross-Validation approach.
 
 ## Overview
 
@@ -10,7 +10,7 @@ nestedcvtraining is built on top of several libraries, mainly:
 - Skopt.
 - Python-Docx
 
-Inside a standard machine learning flow, this package helps the automation of the last stages of hyperparameter optimization, model validation and model training. One of the benefits of using it is that hyperparameter optimization is not restricted to hyperparameters of the model, but also of the post-process pipeline, as it will be shown. 
+Inside a standard machine learning flow, this package helps the automation of the last stages of hyperparameter optimization, model validation and model training. One of the benefits of using it is that hyperparameter optimization is not restricted to hyperparameters of the model, but also of the post-process pipeline, as it will be shown. Another benefit is the easy integration with a probability calibration step. 
 
 The model is optionally calibrated, so that the predict_proba method can be directly interpreted as a probability.
 
