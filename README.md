@@ -22,6 +22,14 @@ In other words, the package facilitates:
   -  After the train, you get a report of the process (with lots of information and plots) and a final model is built repeating the inner procedure in the whole dataset. 
 - This way, each layer of the nested cross validation serves only for one purpose: the outer layer for validating the model (including the procedure for model selection) and the inner layer for selecting the model searching the best parameters with a Bayesian Search.
 
+## How it works
+
+<p align="center">
+<img src="https://mlfromscratch.com/content/images/size/w2000/2019/12/ncv.png">
+Nested Cross Validation Scheme
+</p>
+Image taken from [here](https://mlfromscratch.com/nested-cross-validation-python-code), by the way, a good source of explanation. 
+
 ## Install nestedcvtraining
 
 ```bash
@@ -146,8 +154,6 @@ def find_best_binary_model(
 ## Limitations
 
 For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification. 
-
-
 
 ## Examples
 
