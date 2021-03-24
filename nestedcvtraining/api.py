@@ -4,10 +4,16 @@ from skopt import gp_minimize
 from docx import Document
 from docx.shared import Inches
 from nestedcvtraining.utils.training import train_inner_model
+from nestedcvtraining.utils.metrics import is_supported
 from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
 from collections import Counter
 from sklearn.base import TransformerMixin
 from skopt.space.transformers import Identity
+from skopt.space import Dimension
+from sklearn.utils.validation import check_X_y
+from inspect import isfunction, signature
+
+
 
 
 def find_best_binary_model(
@@ -114,8 +120,16 @@ def find_best_binary_model(
     model : Model trained with the full dataset using the same procedure
     as in the inner cross validation.
     doc : Document python-docx if report_level > 0. Otherwise, None
+
+
+
+        report_level=11,
     """
-    # TODO: Check inputs
+
+    # Validation of inputs
+    X, y = check_X_y(X, y,
+                     accept_sparse=['csc', 'csr', 'coo'],
+                     force_all_finite=False, allow_nd=True)
     counter = Counter(y)
     if len(counter) > 2:
         raise NotImplementedError("Multilabel classification is not yet implemented")
@@ -123,7 +137,44 @@ def find_best_binary_model(
     if y_values != {-1, 1} and y_values != {0, 1}:
         raise NotImplementedError("Values of target are expected to be in {0, 1} or in {-1, 1}")
 
+    if not _validate_model_search_space(model_search_spaces):
+        raise ValueError("model_search_spaces is not well formed")
 
+    if not _validate_folds(k_outer_fold, skip_outer_folds, k_inner_fold, skip_inner_folds):
+        raise ValueError("Folds parameters are not well formed")
+
+    if not _validate_bayesian_search(n_initial_points, n_calls, skopt_func):
+        raise ValueError("Bayesian search parameters are not well formed")
+
+    if not is_supported(loss_metric):
+        raise NotImplementedError(f"Loss metric {loss_metric} is not implemented.")
+
+    if not isinstance(peeking_metrics, list):
+        raise ValueError("Peeking metrics must be a list of str")
+
+    for metric in peeking_metrics:
+        if not is_supported(metric):
+            raise NotImplementedError(f"Metric {metric} is not implemented.")
+
+    if not isinstance(calibrated, bool):
+        raise ValueError("calibrated must be a boolean")
+
+    if not isinstance(verbose, bool):
+        raise ValueError("verbose must be a boolean")
+
+    if not isinstance(build_final_model, bool):
+        raise ValueError("build_final_model must be a boolean")
+
+    if not isinstance(size_variance_validation, int):
+        raise ValueError("size_variance_validation must be an int")
+
+    if size_variance_validation < 0 or size_variance_validation > len(y):
+        raise ValueError("size_variance_validation cannot be negative nor bigger than number of instances")
+
+    if report_level not in [0, 1, 10, 11]:
+        raise ValueError("report_level must be either 0, 1, 10 or 11")
+
+    # End of validation of inputs
 
     if loss_metric not in peeking_metrics:
         peeking_metrics.append(loss_metric)
@@ -273,7 +324,71 @@ class MidasIdentity(Identity):
         return self
 
 
+def _validate_model_search_space(model_search_spaces):
+    if not isinstance(model_search_spaces, dict):
+        raise ValueError("model_search_spaces must be a dict")
+    for model_search in model_search_spaces.values():
+        if not isinstance(model_search, dict):
+            raise ValueError("model_search_spaces must be a dict of dicts")
+        for (key, value) in model_search.items():
+            if key not in ['model', 'pipeline_post_process', 'search_space']:
+                raise ValueError("Some inner key is not in ['model', 'pipeline_post_process', 'search_space']")
+            if key == 'model':
+                if not hasattr(value, 'predict_proba'):
+                    raise ValueError("Estimator has not predict_proba method")
+                if not hasattr(value, 'fit'):
+                    raise ValueError("Estimator has not fit method")
+            if key == 'pipeline_post_process':
+                if value:
+                    if not isinstance(value, sklearn.pipeline.Pipeline):
+                        raise ValueError("pipeline_post_process is not a pipeline")
+            if key == 'search_space':
+                if not isinstance(value,list):
+                    raise ValueError("search_space is not a list")
+                for element in value:
+                    if not isinstance(element, Dimension):
+                        raise ValueError("search_space is not valid")
+    return True
 
 
+def _validate_folds(k_outer_fold, skip_outer_folds, k_inner_fold, skip_inner_folds):
+    if not isinstance(k_outer_fold, int):
+        raise ValueError("k_outer_fold must be int")
+    if not isinstance(k_inner_fold, int):
+        raise ValueError("k_inner_fold must be int")
+    if not isinstance(skip_outer_folds, list):
+        raise ValueError("skip_outer_folds must be a list")
+    if not isinstance(skip_inner_folds, list):
+        raise ValueError("k_outer_fold must be a list")
+    for element in skip_outer_folds:
+        if element not in list(range(k_outer_fold)):
+            raise ValueError("skip_outer_folds must be contained in [0, k_outer_folds-1]")
+    for element in skip_inner_folds:
+        if element not in list(range(k_inner_fold)):
+            raise ValueError("skip_inner_folds must be contained in [0, k_inner_fold-1]")
+    return True
 
+
+def _validate_bayesian_search(n_initial_points, n_calls, skopt_func):
+    if not isinstance(n_initial_points, int):
+        raise ValueError("n_initial_points must be int")
+    if not isinstance(n_calls, int):
+        raise ValueError("n_calls must be int")
+    if n_initial_points < 0 or n_calls < 0:
+        raise ValueError("n_calls and n_initial_points must positive")
+    if n_calls < n_initial_points:
+        raise ValueError("n_calls cannot be lesser than n_initial_points")
+    if not isfunction(skopt_func):
+        raise ValueError("skopt_func must be callable")
+    signature_skopt_func = signature(skopt_func)
+    kwargs = [parameter for parameter in signature_skopt_func.parameters]
+    if 'func' not in kwargs:
+        raise ValueError("skopt_func must have func in kwargs")
+    if 'dimensions' not in kwargs:
+        raise ValueError("skopt_func must have dimensions in kwargs")
+    if 'n_initial_points' not in kwargs:
+        raise ValueError("skopt_func must have n_initial_points in kwargs")
+    if 'n_calls' not in kwargs:
+        raise ValueError("skopt_func must have n_calls in kwargs")
+    return True
 

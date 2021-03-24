@@ -8,6 +8,7 @@ from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 from nestedcvtraining.api import find_best_binary_model, MidasIdentity, OptionedPostProcessTransformer
+from skopt import gbrt_minimize
 
 dict_pipelines_post_process = {
     "option_1": Pipeline(
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         verbose=True,
         k_inner_fold=10,
         k_outer_fold=10,
-        skip_inner_folds=[0, 2, 4, 6, 8],
+        skip_inner_folds=[0, 2, 4, 6, 8, 9],
         skip_outer_folds=[0, 2, 4, 6, 8],
         n_initial_points=10,
         n_calls=10,
@@ -93,5 +94,6 @@ if __name__ == "__main__":
             "average_precision",
             "neg_brier_score",
         ],
+        skopt_func=gbrt_minimize
     )
     document.save("report_dataset.docx")

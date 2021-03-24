@@ -70,3 +70,6 @@ def average_metrics(fold_metrics):
                                                               for metric in fold_metrics])
     return metrics
 
+
+def is_supported(name):
+    return name in METRICS.keys()
