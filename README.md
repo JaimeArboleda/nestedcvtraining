@@ -75,7 +75,8 @@ def find_best_binary_model(
         skip_inner_folds=[],
         n_initial_points=5,
         n_calls=10,
-        calibrated=True,
+        calibrated=False,
+        ensemble=False,
         loss_metric='average_precision',
         peeking_metrics=[],
         report_level=11,
@@ -133,6 +134,10 @@ def find_best_binary_model(
     calibrated : bool, default=False
         If True, all models are calibrated using CalibratedClassifierCV
 
+    ensemble : bool, default=False
+        If True, an ensemble model is built in the inner training loop. Otherwise,
+        a model fitted with the whole inner dataset will be built.
+
     loss_metric : str, default='auc'
         Metric to use in order to find best parameters in Bayesian Search. Options:
         - roc_auc
@@ -167,8 +172,11 @@ def find_best_binary_model(
     Returns
     -------
     model : Model trained with the full dataset using the same procedure
-    as in the inner cross validation.
-    doc : Document python-docx if report_level > 0. Otherwise, None
+            as in the inner cross validation.
+    report_doc : Document python-docx if report_level > 0. Otherwise, None
+    report_dfs : Dict of dataframes, one key for each model in model_search_spaces.
+                 each key, a dataframe with all inner models built with their
+                 params and loss_metric.
     """
 ```
 
@@ -181,6 +189,8 @@ A concise explanation of the parameters is the following:
 -  skip_outer_folds is a list (can be empty) of outer folds to skip. As it can be computationally expensive to use a lot of folds, but at the same time using more folds increase the size of the training datasets, this parameter can be handy when one wants to have bigger training datasets without wanting to train a model for each fold. 
 -  k_inner_fold and skip_inner_folds have the same meaning, but for the inner loop.
 -  n_initial_points and n_calls are parameters directly passed to the optimizer function (gp_minimize by default).
+-  If ensemble is False, a unique model will be fitted after each outer loop using the whole inner dataset. 
+   If True, or if calibrated is True, an ensemble model using all models of all folds will be built. 
 -  calibrated allows you to specify if you want to have calibrated models or not. 
 -  loss_metric is the metric used for the optimization procedure. 
 -  peeking_metrics is a list of metrics that will be analyzed (but not used for minization) in the process. Its only purpose is enhance the reporting. 
@@ -190,7 +200,7 @@ A concise explanation of the parameters is the following:
 -  verbose = False just limit some prints.
 -  Build_final_model, if False, does not train a final model using all data. 
 
-The function returns the model (which is an ensemble model that includes the pipeline, so that you can use it to make predictions on data in the same format as the original dataset) and a report_doc (depending on the report_level, more or less things will be added; you can check the example report docs on the project repository). 
+The function returns the model (which depending on the option can be an ensemble model) that includes the pipeline, so that you can use it to make predictions on data in the same format as the original dataset) and a report_doc (depending on the report_level, more or less things will be added; you can check the example report docs on the project repository), and a dict of dataframes with all the information of the training. 
 
 The other things in the api are those classses:
 
@@ -231,7 +241,7 @@ Both the classes and the function will be more clarified in the examples section
 ## Limitations
 
 - For the moment it only works in binary classification settings, but I plan to adapt it to multilabel classification.
-- The model returned cannot be fitted, because it is an ensemble model built using the inner cross-validation procedure and fitting it should be done only by using this procedure.
+- If an ensemble model is built (depending on the option), the model returned cannot be fitted, because it is an ensemble model built using the inner cross-validation procedure and fitting it should be done only by using this procedure.
 - The OptionedPostProcessTransformer cannot have resamplers inside any of the options. 
 
 ## Examples

@@ -5,7 +5,7 @@ from docx import Document
 from docx.shared import Inches
 from nestedcvtraining.utils.training import train_inner_model
 from nestedcvtraining.utils.metrics import is_supported
-from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc
+from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc, merge_report_dfs
 from collections import Counter
 from sklearn.base import TransformerMixin
 from skopt.space.transformers import Identity
@@ -26,7 +26,8 @@ def find_best_binary_model(
         skip_inner_folds=[],
         n_initial_points=5,
         n_calls=10,
-        calibrated=True,
+        calibrated=False,
+        ensemble=False,
         loss_metric='average_precision',
         peeking_metrics=[],
         report_level=11,
@@ -84,6 +85,10 @@ def find_best_binary_model(
     calibrated : bool, default=False
         If True, all models are calibrated using CalibratedClassifierCV
 
+    ensemble : bool, default=False
+        If True, an ensemble model is built in the inner training loop. Otherwise,
+        a model fitted with the whole inner dataset will be built.
+
     loss_metric : str, default='auc'
         Metric to use in order to find best parameters in Bayesian Search. Options:
         - roc_auc
@@ -118,8 +123,11 @@ def find_best_binary_model(
     Returns
     -------
     model : Model trained with the full dataset using the same procedure
-    as in the inner cross validation.
-    doc : Document python-docx if report_level > 0. Otherwise, None
+            as in the inner cross validation.
+    report_doc : Document python-docx if report_level > 0. Otherwise, None
+    report_dfs : Dict of dataframes, one key for each model in model_search_spaces.
+                 each key, a dataframe with all inner models built with their
+                 params and loss_metric.
     """
 
     # Validation of inputs
@@ -155,6 +163,9 @@ def find_best_binary_model(
     if not isinstance(calibrated, bool):
         raise ValueError("calibrated must be a boolean")
 
+    if not isinstance(ensemble, bool):
+        raise ValueError("ensemble must be a boolean")
+
     if not isinstance(verbose, bool):
         raise ValueError("verbose must be a boolean")
 
@@ -175,6 +186,9 @@ def find_best_binary_model(
 
     # End of validation of inputs
 
+    if calibrated:
+        ensemble = True
+
     if loss_metric not in peeking_metrics:
         peeking_metrics.append(loss_metric)
 
@@ -187,7 +201,7 @@ def find_best_binary_model(
         write_intro_doc(
             outer_report_doc, y, model_search_spaces,
             k_outer_fold, skip_outer_folds, k_inner_fold,
-            skip_inner_folds, n_initial_points, n_calls,
+            skip_inner_folds, n_initial_points, n_calls, ensemble,
             calibrated, loss_metric, size_variance_validation,
             skopt_func)
         inner_report_doc = Document()
@@ -204,6 +218,7 @@ def find_best_binary_model(
 
     outer_cv = StratifiedKFold(n_splits=k_outer_fold)
     dict_inner_models = []
+    list_report_dfs = []
     outer_Xs = []
     outer_ys = []
     folds_index = []
@@ -216,40 +231,41 @@ def find_best_binary_model(
                 inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
             X_hold_out = X[test_index] if report_level in [1, 11] else []
             y_hold_out = y[test_index] if report_level in [1, 11] else []
-            inner_model, model_params, model_comments = train_inner_model(
+            inner_model, model_params, model_comments, report_dfs = train_inner_model(
                 X=X[train_index], y=y[train_index], model_search_spaces=model_search_spaces,
                 X_hold_out=X_hold_out, y_hold_out=y_hold_out,
                 k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                n_initial_points=n_initial_points, n_calls=n_calls,
+                n_initial_points=n_initial_points, n_calls=n_calls, ensemble=ensemble,
                 calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=peeking_metrics,
                 verbose=verbose, skopt_func=skopt_func, report_doc=inner_report_doc)
             dict_inner_models.append({'model': inner_model,
                                  'params': model_params,
                                  'comments': model_comments})
-
+            list_report_dfs.append(report_dfs)
             outer_Xs.append(X[test_index])
             outer_ys.append(y[test_index])
     if outer_report_doc:
         outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
     add_plots = True if report_level > 9 else False
+    report_dfs = merge_report_dfs(*list_report_dfs)
     evaluate_model(
         dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys,
         X_val_var=X_val_var, y_val_var=y_val_var,
         folds_index=folds_index, report_doc=outer_report_doc,
         loss_metric=loss_metric, peeking_metrics=peeking_metrics,
-        add_plots=add_plots
+        add_plots=add_plots, report_dfs=report_dfs
     )
     # After assessing the procedure, we repeat it on the full dataset:
     final_model = None
     if build_final_model:
-        final_model, _, _ = train_inner_model(
+        final_model, _, _, _ = train_inner_model(
                 X=X, y=y, model_search_spaces=model_search_spaces,
                 X_hold_out=[], y_hold_out=[],
                 k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                n_initial_points=n_initial_points, n_calls=n_calls,
+                n_initial_points=n_initial_points, n_calls=n_calls, ensemble=ensemble,
                 calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=[],
                 verbose=verbose, skopt_func=skopt_func, report_doc=None)
-    return final_model, merge_docs(outer_report_doc, inner_report_doc)
+    return final_model, merge_docs(outer_report_doc, inner_report_doc), report_dfs
 
 
 class OptionedPostProcessTransformer(TransformerMixin):

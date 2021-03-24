@@ -1,12 +1,14 @@
 from docx.shared import Inches, Mm, Pt
 import numpy as np
-from .plotting import plot_calibration_curve, plot_roc_curve, plot_precision_recall_curve, plot_confusion_matrix, plot_histogram
-from .metrics import get_metric
+from .plotting import plot_calibration_curve, plot_roc_curve, plot_precision_recall_curve, \
+    plot_confusion_matrix, plot_histogram, plot_param_metric_relation
+from .metrics import get_metric, func_neg_score, is_loss_metric
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 from docxcompose.composer import Composer
 from collections import Counter
 from datetime import datetime
+import pandas as pd
 
 
 SIZE_IMAGE = 8
@@ -129,10 +131,12 @@ def add_plots_doc(report_doc, ys, y_probas, folds_index):
 
 
 def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
-                   loss_metric, peeking_metrics, report_doc, add_plots):
+                   loss_metric, peeking_metrics, report_doc, add_plots, report_dfs):
     y_probas = []
     for index, dict_model in enumerate(dict_models):
         y_probas.append(dict_model['model'].predict_proba(Xs[index])[:, 1])
+    if report_doc:
+        plots_report_dfs(report_doc, report_dfs, loss_metric)
 
     # Add a table for comparison of metrics
     if peeking_metrics and report_doc:
@@ -263,7 +267,7 @@ def print_search_spaces(report_doc, model_search_spaces):
 
 def write_intro_doc(report_doc, y, model_search_spaces,
             k_outer_fold, skip_outer_folds, k_inner_fold,
-            skip_inner_folds, n_initial_points, n_calls,
+            skip_inner_folds, n_initial_points, n_calls, ensemble,
             calibrated, loss_metric, size_variance_validation,
             skopt_func):
     report_doc.add_heading('Introduction', level=1)
@@ -290,6 +294,10 @@ def write_intro_doc(report_doc, y, model_search_spaces,
         report_doc.add_paragraph(f'Models will be calibrated using their inner validation set.').style = 'List Bullet'
     else:
         report_doc.add_paragraph(f'Models will not be calibrated.').style = 'List Bullet'
+    if ensemble:
+        report_doc.add_paragraph(f'An ensemble model will be built using all inner models.').style = 'List Bullet'
+    else:
+        report_doc.add_paragraph(f'A final model will be fitted using the whole inner dataset.').style = 'List Bullet'
     report_doc.add_paragraph(f'The optimizing metric for the bayesian search is {loss_metric}.').style = 'List Bullet'
     report_doc.add_paragraph(f'The function used for the bayesian search is {skopt_func.__name__}.').style = 'List Bullet'
     report_doc.add_paragraph(f'Additionally, {size_variance_validation} instances will be left out '
@@ -373,3 +381,50 @@ def merge_docs(first_doc, second_doc):
     composer = Composer(first_doc)
     composer.append(second_doc)
     return composer.doc
+
+
+def create_report_dfs(list_params, list_metrics, loss_metric):
+    dict_report_dfs = {}
+
+    if is_loss_metric(loss_metric):
+        list_metrics = [metric['loss_metric'] for metric in list_metrics]
+    else:
+        list_metrics = [func_neg_score(metric['loss_metric']) for metric in list_metrics]
+
+    for index, params in enumerate(list_params):
+        model = params['model']
+        if model not in dict_report_dfs.keys():
+            dict_report_dfs[model] = {}
+            dict_report_dfs[model][loss_metric] = []
+            for param in params.keys():
+                if param != 'model':
+                    dict_report_dfs[model][param] = []
+        for param, value in params.items():
+            if param != 'model':
+                dict_report_dfs[model][param].append(value)
+        dict_report_dfs[model][loss_metric].append(list_metrics[index])
+    report_dfs = {}
+    for model in dict_report_dfs.keys():
+        report_dfs[model] = pd.DataFrame.from_dict(dict_report_dfs[model])
+    return report_dfs
+
+
+def merge_report_dfs(*report_dfs):
+    merged_report_dfs = {}
+    for key in report_dfs[0].keys():
+        merged_report_dfs[key] = pd.concat([dict_df[key] for dict_df in report_dfs], axis=0)
+    return merged_report_dfs
+
+
+def plots_report_dfs(report_doc, report_dfs, loss_metric):
+    report_doc.add_heading(f'Plots for all trained models and params with respect '
+                           f'to loss metric on the inner folds', level=1)
+    for key in report_dfs:
+        report_doc.add_heading(f'Plots for {key} model', level=2)
+        for column in report_dfs[key].columns:
+            if column != loss_metric:
+                report_doc.add_heading(f'Plots for {column} param', level=3)
+                memfile = plot_param_metric_relation(data=report_dfs[key], x=column, y=loss_metric, height=SIZE_IMAGE - 2)
+                report_doc.add_picture(memfile, width=Inches(SIZE_IMAGE))
+                memfile.close()
+    return

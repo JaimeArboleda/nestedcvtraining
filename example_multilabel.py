@@ -76,7 +76,7 @@ if __name__ == "__main__":
         },
     }
 
-    best_model, document = find_best_binary_model(
+    best_model, document, full_train_report = find_best_binary_model(
         X=X,
         y=y,
         model_search_spaces=dict_models,

@@ -9,7 +9,7 @@ from .reporting import (
     write_train_report,
     prop_minority_to_rest_class,
     MetadataFit,
-    averaged_metadata_list,
+    averaged_metadata_list, create_report_dfs,
 )
 import numpy as np
 from collections import Counter
@@ -193,7 +193,7 @@ def find_best_model(list_models, list_metrics):
 
 def train_inner_model(X, y, model_search_spaces,
                       X_hold_out, y_hold_out, k_inner_fold,
-                      skip_inner_folds, n_initial_points, n_calls,
+                      skip_inner_folds, n_initial_points, n_calls, ensemble,
                       calibrated, loss_metric, peeking_metrics,
                       skopt_func, verbose, report_doc):
 
@@ -207,6 +207,7 @@ def train_inner_model(X, y, model_search_spaces,
         pipeline_post_process = model_search_spaces[key]["pipeline_post_process"]
         if not pipeline_post_process:
             pipeline_post_process = Pipeline([("identity", _MidasIdentity())])
+        model_name = key
         model = model_search_spaces[key]["model"]
         complete_steps = pipeline_post_process.steps + [("model", model)]
         complete_pipeline = Pipeline(complete_steps)
@@ -229,9 +230,9 @@ def train_inner_model(X, y, model_search_spaces,
             )
 
             complete_pipeline.set_params(**copy_params)
-            list_params.append({**params, **{"model": model.__class__.__name__}})
+            list_params.append({**params, **{"model": model_name}})
             if verbose:
-                print(f"Optimizing model {key}\n")
+                print(f"Optimizing model {model_name}\n")
                 print(f"With parameters {params}\n")
 
             if exists_resampler:
@@ -272,12 +273,18 @@ def train_inner_model(X, y, model_search_spaces,
         )
 
     best_model, index_best_model = find_best_model(list_models, list_metrics)
+    if 'undersampling_majority_class' in list_params[index_best_model].keys():
+        undersampling = list_params[index_best_model]['undersampling_majority_class']
+    if not ensemble and not undersampling:
+        best_model = best_model.get_complete_pipeline_to_fit().fit(X, y)
     if verbose:
         print("Best model found")
+    report_dfs = create_report_dfs(list_params, list_metrics, loss_metric)
     if report_doc:
         write_train_report(
             report_doc=report_doc, list_params=list_params, list_metrics=list_metrics,
             list_holdout_metrics=list_holdout_metrics, peeking_metrics=peeking_metrics,
             list_comments=list_comments
         )
-    return best_model, list_params[index_best_model], list_comments[index_best_model]
+
+    return best_model, list_params[index_best_model], list_comments[index_best_model], report_dfs

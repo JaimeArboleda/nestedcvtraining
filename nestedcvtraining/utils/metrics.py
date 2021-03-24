@@ -32,11 +32,15 @@ METRICS = {
 }
 
 
+def func_neg_score(score):
+    return 1.0 - score
+
+
 def neg_score(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         score = func(*args, **kwargs)
-        return 1.0 - score
+        return func_neg_score(score)
     return wrapper
 
 
@@ -50,6 +54,11 @@ def get_metric(name, option):
         return metric['func']
     else:
         return neg_score(metric['func'])
+
+def is_loss_metric(name):
+    if name not in METRICS.keys():
+        raise ValueError("Metric not supported: " + name)
+    return METRICS[name]['score_type'] == 'loss'
 
 
 def evaluate_metrics(y_true, y_proba, loss_metric, peeking_metrics):

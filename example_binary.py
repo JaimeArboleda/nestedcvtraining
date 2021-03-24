@@ -76,17 +76,18 @@ if __name__ == "__main__":
         },
     }
 
-    best_model, document = find_best_binary_model(
+    best_model, report_doc, report_dfs = find_best_binary_model(
         X=X,
         y=y,
         model_search_spaces=dict_models,
         verbose=True,
         k_inner_fold=10,
-        k_outer_fold=10,
+        k_outer_fold=9,
         skip_inner_folds=[0, 2, 4, 6, 8, 9],
-        skip_outer_folds=[0, 2, 4, 6, 8],
+        skip_outer_folds=[0, 2, 3, 4, 6, 8],
         n_initial_points=10,
         n_calls=10,
+        build_final_model=False,
         loss_metric="average_precision",
         peeking_metrics=[
             "roc_auc",
@@ -96,4 +97,8 @@ if __name__ == "__main__":
         ],
         skopt_func=gbrt_minimize
     )
-    document.save("report_dataset.docx")
+    report_doc.save("report_dataset.docx")
+    for model in report_dfs.keys():
+        report_dfs[model].to_csv('report_dfs ' + model + '.csv', sep=';', index=False)
+
+

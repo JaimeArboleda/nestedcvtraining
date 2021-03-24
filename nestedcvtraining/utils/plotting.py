@@ -3,6 +3,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from sklearn.calibration import calibration_curve
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tck
 from io import BytesIO
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
@@ -79,6 +80,27 @@ def plot_histogram(y, y_proba):
     plt.title('Density of predicted labels')
     plt.xlabel('Probability')
     plt.ylabel('Density')
+    memfile = BytesIO()
+    plt.savefig(memfile)
+    return memfile
+
+
+def plot_param_metric_relation(data, x, y, height):
+    fig, ax = plt.subplots()
+
+    if len(Counter(data[x])) > 8 and pd.api.types.is_numeric_dtype(data[x]):
+        data[x + ' '] = pd.cut(data[x], bins=8)
+        data[x + ' '] = data[x + ' '].apply(lambda w: w.mid)
+        ax = sns.violinplot(data=data[[x+' ', y]], x=x+' ', y=y, height=height)
+
+        # ax.xaxis.set_major_formatter(tck.FormatStrFormatter('%.2f'))
+        # xticks = sorted(list(data[x + ' '].unique()))
+        # ax.set_xlim(xticks[0], xticks[-1])
+        # ax.set_xticks(xticks)
+        data.drop(columns=x + ' ', inplace=True)
+    else:
+        ax = sns.violinplot(data=data, x=x, y=y, height=height)
+        #ax.set_xticks(np.linspace(min(data[x]), max(data[x]), num=10))
     memfile = BytesIO()
     plt.savefig(memfile)
     return memfile
