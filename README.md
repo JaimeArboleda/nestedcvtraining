@@ -42,9 +42,13 @@ How does the training in the inner loop takes place?
 - If, in addition, the calibrated option is selected, all base models of the ensemble will be calibrated (each one of them, by using the corresponding inner validation dataset). 
 
 This package follows all these rules and recommended practices: 
-- You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
-- If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
-- If you use cross validation for model selection, once you have checked that the model selection procedure is good (i.e. it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
+1. You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
+2. If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
+3. If you use cross validation for model selection, once you have checked that the model selection procedure is good (i.e. it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
+
+The second point is not completely true. In this package, if there is no resampler in the post-process pipeline, then, for each outer fold, the whole inner dataset is fitted using the post-process pipeline, because the opposite is less efficient. This of course leaves out the test set of the outer loop, so this test set is transformed using the fitted pipeline and there is no data leakage that could affect the quality assessment of the trained models. 
+
+If there is a resampler, the pipeline is fitted on each inner training set, because the metrics should be measured on datasets with the same class ratios as the original. This is computationally more expensive but safer. This means that, for example, if there is a scaler in the pipeline, and you have 3 inner folds, 3 scalers will be fitted. As the final model is an ensemble of all models for each fold, when making a real prediction, three ways of scaling will be used, three models and then the result will be averaged. 
 
 ## Install nestedcvtraining
 
@@ -186,6 +190,8 @@ A concise explanation of the parameters is the following:
 -  verbose = False just limit some prints.
 -  Build_final_model, if False, does not train a final model using all data. 
 
+The function returns the model (which is an ensemble model that includes the pipeline, so that you can use it to make predictions on data in the same format as the original dataset) and a report_doc (depending on the report_level, more or less things will be added; you can check the example report docs on the project repository). 
+
 The other things in the api are those classses:
 
 ```
@@ -230,13 +236,11 @@ Both the classes and the function will be more clarified in the examples section
 
 ## Examples
 
-Example 1: 
-
 Suppose you have several post-processing options and you want to find which one works best for your model. Then, you can use this class to build a transformer that, depending on the option, will make one or the other transformation, and the bayesian search procedure can find the optimum value of the option (and all the other hyperparameters of the model). 
 
 You need to define a dict like that: 
 
-´´´
+```
 dict_pipelines_post_process = {
     "option_1": Pipeline(
         [("scale", StandardScaler()), ("reduce_dims", PCA(n_components=5))]
@@ -249,7 +253,7 @@ dict_pipelines_post_process = {
     ),
     "option_3": Pipeline([("identity", MidasIdentity())])
 }
-´´´
+```
 
 (option_3 is just doing nothing, and you can set this option by using the MidasIdentity transformer in the api). 
 
@@ -332,7 +336,7 @@ This means that:
 - Two models will be tried (for each model, all optimization procedure, using n_inicial_points+n_initial_calls will be made; each model is completely independent from the other).
 - XGBClassifier() has a two step pipeline, first a transformation (that in itself can be scaling + PCA -option_1-, scaling + SelectKBest -option_2- or nothing -option_3-) and then a SMOTE() for increasing samples of the minority class.  
 - XGBClassifier() has a search space that plays with some parameters of the model, some parameters of the post-process (the option and the resampler strategy) and also it uses some "obscure" parameters that are not part neither of the model nor of the pipeline. This two parameters specify whether and how to carry out an undersampling of majority class ensemble strategy as described [here](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf). This is compatible with having a resampler, because after the undersampling of majority class, a resampler can help make the classes even more balanced. 
-- RandomForestClassifier(), on the other hand, has not a pipeline of post-process transformations, so the search parameters are mainly of the model. 
+- RandomForestClassifier(), on the other hand, has not a pipeline of post-process transformations, so the search parameters are all (but the undersampling just explained) of the model. 
 
 ## Story behind nestedcvtraining
 
