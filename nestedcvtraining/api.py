@@ -40,7 +40,8 @@ def find_best_binary_model(
         Feature set.
 
     y : np.array
-        Classification target to predict.
+        Classification target to predict. For the moment only binary labels are allowed, and
+        values are supposed to be {0, 1} or {-1, 1}
 
     model_search_spaces : Dict[str : List[List[skopt.Space]]
         Dict of models to try inside of the inner loops. For each model, there is
@@ -112,8 +113,14 @@ def find_best_binary_model(
     doc : Document python-docx if report_level > 0. Otherwise, None
     """
     # TODO: Check inputs
-    if len(Counter(y)) > 2:
+    counter = Counter(y)
+    if len(counter) > 2:
         raise NotImplementedError("Multilabel classification is not yet implemented")
+    y_values = set(counter.keys())
+    if y_values != {-1, 1} and y_values != {0, 1}:
+        raise NotImplementedError("Values of target are expected to be in {0, 1} or in {-1, 1}")
+
+
 
     if loss_metric not in peeking_metrics:
         peeking_metrics.append(loss_metric)

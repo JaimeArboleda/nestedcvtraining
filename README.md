@@ -10,7 +10,7 @@ nestedcvtraining is built on top of several libraries, mainly:
 - Skopt.
 - Python-Docx
 
-Inside of a standard macihne learning flow, this package helps the automation of the last stages of hyperparameter optimization, model validation and model training. One of the benefits of using it is that hyperparameter optimization is not restricted to hyperparameters of the model, but also of the post-process pipeline, as it will be shown. 
+Inside a standard machine learning flow, this package helps the automation of the last stages of hyperparameter optimization, model validation and model training. One of the benefits of using it is that hyperparameter optimization is not restricted to hyperparameters of the model, but also of the post-process pipeline, as it will be shown. 
 
 The model is optionally calibrated, so that the predict_proba method can be directly interpreted as a probability.
 
@@ -163,10 +163,10 @@ When working on a classification project where we wanted to get a calibrated pro
 - Assessing the quality of the model.
 
 The reason is that the class CalibratedClassifierCV of Sklearn needs an independent dataset in order to calibrate the base model. So if you want to perform a nested cross validation loop to separate the optimization procedure from the quality assessment, it's not easy to implement. CalibratedClassifierCV has essentially two fit methods: 
-- One with the "prefit" option, that trains a regressor to calibrate the probabilities (one has to take care that the data is independent from the data on where the base model was trained).
+- One with the "prefit" option, that trains a regressor to calibrate the probabilities (one has to take care that the data is independent of the data on where the base model was trained).
 - Another one with the "cv" option, that performs a Cross-Validation to train several base models and regressors using the splits, and builds an ensemble of models. 
 
-In a nested cross validation, the second approach will be appropiated for the inner loop. But then a problem arises: if you are trying to optimize some metric using a Bayesian Search, how can you measure this metric when you have a model that has been trained on the whole dataset? I tried to solve this by accessing the inner base models of the CalibratedClassifierCV and evaluating the metric on the outer fold of the inner cross-validation. But this approach was not very elegant and finally I tried to "assemble" my own CalibratedClassifierCV by generating the inner split myself, training several base models (one for each fold), calibrating them using the "prefit" option and evaluating the loss metric of the Bayesian Search by averaging all metrics of all calibrated models on their corresponding validation dataset. 
+In a nested cross validation, the second approach will be appropriated for the inner loop. But then a problem arises: if you are trying to optimize some metric using a Bayesian Search, how can you measure this metric when you have a model that has been trained on the whole dataset? I tried to solve this by accessing the inner base models of the CalibratedClassifierCV and evaluating the metric on the outer fold of the inner cross-validation. But this approach was not very elegant and finally I tried to "assemble" my own CalibratedClassifierCV by generating the inner split myself, training several base models (one for each fold), calibrating them using the "prefit" option and evaluating the loss metric of the Bayesian Search by averaging all metrics of all calibrated models on their corresponding validation dataset. 
 
 After I did that, and found that it worked, I added more functionality to make it a more complete solution: 
 - Generating a docx report of training, with many metrics and plots.
