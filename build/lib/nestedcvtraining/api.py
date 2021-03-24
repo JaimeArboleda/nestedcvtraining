@@ -120,10 +120,6 @@ def find_best_binary_model(
     model : Model trained with the full dataset using the same procedure
     as in the inner cross validation.
     doc : Document python-docx if report_level > 0. Otherwise, None
-
-
-
-        report_level=11,
     """
 
     # Validation of inputs
