@@ -16,9 +16,9 @@ In other words, the package facilitates:
 - Search for best parameters, including parameters of the transformation process (for example, whether to use PCA or not, the number of components in PCA, whether to scale or not the features...). 
 - Perform a nested Cross Validation in which: 
   -  The outer loop evaluates the quality of the models with respect to the given metrics. 
-  -  The inner loop builds a (optionally calibrated) ensemble model selecting best parameters using Bayesian Search (with Skopt implementation). It's an ensemble model built using the trained models for each inner fold. 
-  -  After the train, you get a report of the process (with lots of information and plots) and a final ensemble model is built repeating the inner procedure in the whole dataset. 
-- This way, each layer of the nested cross validation serves only for one purpose: the outer layer for validating the model (including the procedure for model selection) and the inner layer for selecting the model searching the best parameters with a Bayesian Search.
+  -  The inner loop builds an (optionally calibrated) model, by selecting its best parameters using a Bayesian Search (with Skopt implementation). If either ensemble or calibrated is True, it will be an ensemble model, built by using all the best trained models, one for each inner fold. If both ensemble and calibrated are False, it will be a model fitted on the whole inner dataset. 
+  -  After the train, you get a report of the process (with lots of information and plots), a dict of dataframes with all the iterations that have been made and a final model built by repeating the inner procedure in the whole dataset. 
+- This way, each layer of the nested cross validation serves only for one purpose: the outer layer, for validating the model (including the procedure for model selection), and the inner layer, for searching the best parameters with a Bayesian Search.
 
 ## How it works
 
@@ -35,9 +35,20 @@ Nested Cross Validation aims at two things:
 
 This package performs nested cross validation in this way: 
 - The outer loop is used only for estimating the error of the model built in the inner loop. 
-- The inner loop is used only for training an ensemble model by selecting the best parameters and hyperparameters for it. 
+- The inner loop is used only for training a (optionally ensembled) model, by selecting the best parameters and hyperparameters for it. 
 
-How does the training in the inner loop takes place? 
+The algorithm in more detail goes as follows: 
+Note: For simplicity let's assume that skip_inner_folds and skip_outer_folds are empty (they allow you to skip some folds in order to make the process quicker). 
+- There is an outer loop that is repeated k_outer_fold times. For each outer fold, 
+
+For example, if both k_outer_folds and k_inner_folds where 3, you will perform this: 
+
+<p align="center">
+<img src="https://github.com/JaimeArboleda/nestedcvtraining/blob/master/images/scheme.png">
+Example with 3 + 3 folds. 
+</p>
+
+
 - If k is the number of inner folds on the inner loop, then for each combination of parameters and hyperparameters performed by the bayesian search engine, k models will be trained, and an ensemble model using all of them will be served (preditions of this ensemble modelis the averaged prediction of all base models). 
 - If, in addition, the calibrated option is selected, all base models of the ensemble will be calibrated (each one of them, by using the corresponding inner validation dataset). 
 
