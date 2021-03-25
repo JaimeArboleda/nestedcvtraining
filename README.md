@@ -226,7 +226,9 @@ This package performs nested cross validation in this way:
 - The inner loop is used only for training a (optionally ensembled) model, by selecting the best parameters and hyperparameters for it. 
 
 The algorithm goes as follows: 
+
 Note: For simplicity let's assume that skip_inner_folds and skip_outer_folds are empty (they allow you to skip some folds in order to make the process quicker). 
+
 - There is an outer loop that is repeated k_outer_fold times. For each outer fold, a training set and a holdout set are set, and the inner procedure is carried out on the training set. For the train set:  
   - A model search is performed using bayesian optimization. For each combination of parameters that the bayesian engine tries, k_inner_folds model are fitted, each one of them using its own training set and validation set (training + validation sets are a split of the outer training set). 
   - If calibrated is True, all those models are calibrated using their own validation set (because calibration requieres an independent dataset). In this case, the final model for each fold will be a calibrated model (that essentially is a stack of two models, the base classifier and a regressor). 
@@ -242,6 +244,7 @@ For example, if both k_outer_folds and k_inner_folds where 3, and the model_sear
 </p>
 
 There are different ways of training the models regarding this parameters, that can be summarized as follows. In the following explanation, let k be k_inner_fold, and let's assume that skip_inner_folds is empty. Let's also assume that the model_search_space has only one model, for simplitity (if not, the procedure will be the same for each of the models, and the best one will be selected). Finally, let's assume that m is the imbalance ratio, so if undersampling_majority_class is True, m models are trained there: 
+
 - There is a resampler in the pipeline. 
   - Undersampling_majority_class is True. 
     - Calibrated is True. 
