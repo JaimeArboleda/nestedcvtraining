@@ -425,7 +425,7 @@ def create_report_dfs(list_params, list_metrics, loss_metric):
 def merge_report_dfs(*report_dfs):
     merged_report_dfs = {}
     for key in report_dfs[0].keys():
-        merged_report_dfs[key] = pd.concat([dict_df[key] for dict_df in report_dfs], axis=0)
+        merged_report_dfs[key] = pd.concat([dict_df[key] for dict_df in report_dfs], axis=0).reset_index(inplace=True)
     return merged_report_dfs
 
 

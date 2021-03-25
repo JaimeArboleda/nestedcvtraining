@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='nestedcvtraining',
-    version='0.1',
+    version='0.1.1',
     packages=['nestedcvtraining', 'nestedcvtraining.utils'],
     url='https://github.com/JaimeArboleda/nestedcvtraining',
     license='MIT License',

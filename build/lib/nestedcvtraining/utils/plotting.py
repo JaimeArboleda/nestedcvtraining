@@ -3,6 +3,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from sklearn.calibration import calibration_curve
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tck
 from io import BytesIO
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
@@ -79,6 +80,24 @@ def plot_histogram(y, y_proba):
     plt.title('Density of predicted labels')
     plt.xlabel('Probability')
     plt.ylabel('Density')
+    memfile = BytesIO()
+    plt.savefig(memfile)
+    return memfile
+
+
+def plot_param_metric_relation(data, x, y, height):
+    fig, ax = plt.subplots()
+
+    if len(Counter(data[x])) > 8 and pd.api.types.is_numeric_dtype(data[x]):
+        data[x + ' '] = pd.cut(data[x], bins=8)
+        data[x + ' '] = data[x + ' '].apply(lambda w: np.round(w.mid, 3))
+
+        sns.violinplot(data=data[[x + ' ', y]], x=x + ' ', y=y, height=height, ax=ax)
+
+        data.drop(columns=x + ' ', inplace=True)
+    else:
+        ax = sns.violinplot(data=data, x=x, y=y, height=height)
+
     memfile = BytesIO()
     plt.savefig(memfile)
     return memfile
