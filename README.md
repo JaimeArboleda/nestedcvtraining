@@ -37,29 +37,30 @@ This package performs nested cross validation in this way:
 - The outer loop is used only for estimating the error of the model built in the inner loop. 
 - The inner loop is used only for training a (optionally ensembled) model, by selecting the best parameters and hyperparameters for it. 
 
-The algorithm in more detail goes as follows: 
+The algorithm goes as follows: 
 Note: For simplicity let's assume that skip_inner_folds and skip_outer_folds are empty (they allow you to skip some folds in order to make the process quicker). 
-- There is an outer loop that is repeated k_outer_fold times. For each outer fold, 
+- There is an outer loop that is repeated k_outer_fold times. For each outer fold, a training set and a holdout set are set, and the inner procedure is carried out on the training set. For the train set:  
+  - A model search is performed using bayesian optimization. For each combination of parameters that the bayesian engine tries, k_inner_folds model are fitted, each one of them using its own training set and validation set (training + validation sets are a split of the outer training set). 
+  - If calibrated is True, all those models are calibrated using their own validation set (because calibration requieres an independent dataset). In this case, the final model for each fold will be a calibrated model (that essentially is a stack of two models, the base classifier and a regressor). 
+  - The loss metric is computed by averaging the the scores of all models (calibrated or not, depending on the option) on their own validation set. This loss metric is the output of the evaluation function that guides the bayesian search process. 
+  - If both ensemble and calibrated are False, after the search is performed and best parameters are found, a final model will be fitted on the complete training set (the outer training set) using those parameters. Otherwise, the model will be an ensemble of all the k_inner_fold models. 
+- When the inner loop is finished, the evaluation of the inner model takes place using the outer holdout set that is completely unknown to this model. Some metrics and plots are made (depending on the reporting_level) and the loop goes on. 
+- At the end of the outer loop, the inner procedure of selecting a model is applied on the complete dataset. 
 
-For example, if both k_outer_folds and k_inner_folds where 3, you will perform this: 
+For example, if both k_outer_folds and k_inner_folds where 3, and the model_search_space had only one model, you will perform this scheme. 3 outer loops and 3 inner loops will be made, so a total of 9 * (number of calls of the bayesian procedure) partial inner models will be fitted, 3 inner models (either an ensemble or not) will be returned by the inner loop and evaluated on the holdout set and a final model will be returned by the main function. 
 
 <p align="center">
 <img src="https://github.com/JaimeArboleda/nestedcvtraining/blob/master/images/scheme.png">
-Example with 3 + 3 folds. 
 </p>
-
-
-- If k is the number of inner folds on the inner loop, then for each combination of parameters and hyperparameters performed by the bayesian search engine, k models will be trained, and an ensemble model using all of them will be served (preditions of this ensemble modelis the averaged prediction of all base models). 
-- If, in addition, the calibrated option is selected, all base models of the ensemble will be calibrated (each one of them, by using the corresponding inner validation dataset). 
 
 This package follows all these rules and recommended practices: 
 1. You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
 2. If you have a post-processing step on your data pipeline that uses info of all rows (for example, PCA, normalization, feature selection based on variance or information gain with respect to the target), this step should be done inside of the cross validation, fitting with the train set and transforming the test/validation set accordingly in the same fashion. If this care is not taking, you are at risk of understimating the error of the model. This is specially important when you use the information of the target to select the features. Otherwise, if the target is not used and you have big datasets (much more rows tan columns) this effect can be very small. 
 3. If you use cross validation for model selection, once you have checked that the model selection procedure is good (i.e. it has low variance, the metric scores are well enough), then you should apply it the same way to the whole dataset. 
 
-The second point is not completely true. In this package, if there is no resampler in the post-process pipeline, then, for each outer fold, the whole inner dataset is fitted using the post-process pipeline, because the opposite is less efficient. This of course leaves out the test set of the outer loop, so this test set is transformed using the fitted pipeline and there is no data leakage that could affect the quality assessment of the trained models. 
+The second point is not completely true. In this package, if there is no resampler in the post-process pipeline, then, for each outer fold, the whole inner dataset is fitted using the post-process pipeline, because the opposite is less efficient. This, of course, does not affect the holdout set of the outer loop, so this set is transformed using the fitted pipeline and there is no data leakage that could affect the quality assessment of the trained models. 
 
-If there is a resampler, the pipeline is fitted on each inner training set, because the metrics should be measured on datasets with the same class ratios as the original. This is computationally more expensive but safer. This means that, for example, if there is a scaler in the pipeline, and you have 3 inner folds, 3 scalers will be fitted. As the final model is an ensemble of all models for each fold, when making a real prediction, three ways of scaling will be used, three models and then the result will be averaged. 
+If, otherwise, there is a resampler, the pipeline is fitted on each inner training set, because the metrics should be measured on datasets with the same class ratios as the original. This is computationally more expensive, but safer. This means that, for example, if there is a scaler in the pipeline, and you have 3 inner folds, 3 scalers will be fitted. As the final model could be an ensemble of all models for each fold, when making a real prediction, three ways of scaling will be used in this case, three models will make a prediction and then the result will be averaged. 
 
 ## Install nestedcvtraining
 
