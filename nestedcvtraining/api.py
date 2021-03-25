@@ -5,7 +5,7 @@ from docx import Document
 from docx.shared import Inches
 from nestedcvtraining.utils.training import train_inner_model
 from nestedcvtraining.utils.metrics import is_supported
-from nestedcvtraining.utils.reporting import evaluate_model, reporting_width, merge_docs, write_intro_doc, merge_report_dfs
+from nestedcvtraining.utils.reporting import evaluate_models, reporting_width, merge_docs, write_intro_doc, merge_report_dfs
 from collections import Counter
 from sklearn.base import TransformerMixin
 from skopt.space.transformers import Identity
@@ -245,10 +245,10 @@ def find_best_binary_model(
             outer_Xs.append(X[test_index])
             outer_ys.append(y[test_index])
     if outer_report_doc:
-        outer_report_doc.add_heading(f'Report of validation of the model in the outer Cross Validation', level=1)
+        outer_report_doc.add_heading(f'Report of validation of the models in the outer Cross Validation', level=1)
     add_plots = True if report_level > 9 else False
     report_dfs = merge_report_dfs(*list_report_dfs)
-    evaluate_model(
+    evaluate_models(
         dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys,
         X_val_var=X_val_var, y_val_var=y_val_var,
         folds_index=folds_index, report_doc=outer_report_doc,

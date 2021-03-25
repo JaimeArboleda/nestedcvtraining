@@ -77,10 +77,13 @@ class MidasEnsembleClassifiersWithPipeline:
         return mean_proba
 
     def get_complete_pipeline_to_fit(self):
-        if self.post_process_pipeline:
-            complete_steps = self.post_process_pipeline.steps + [("model", self.list_estimators[0])]
+        if isinstance(self.list_estimators[0], MidasEnsembleClassifiersWithPipeline):
+            return self.list_estimators[0].get_complete_pipeline_to_fit()
         else:
-            complete_steps = [("model", self.list_estimators[0])]
-        return Pipeline(complete_steps)
+            if self.post_process_pipeline:
+                complete_steps = self.post_process_pipeline.steps + [("model", self.list_estimators[0])]
+            else:
+                complete_steps = [("model", self.list_estimators[0])]
+            return Pipeline(complete_steps)
 
 

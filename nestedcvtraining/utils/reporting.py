@@ -9,6 +9,7 @@ from docxcompose.composer import Composer
 from collections import Counter
 from datetime import datetime
 import pandas as pd
+from sklearn.calibration import CalibratedClassifierCV
 
 
 SIZE_IMAGE = 8
@@ -52,6 +53,17 @@ class MetadataFit:
 
     def get_prop_minority_class_af(self):
         return self._prop_minority_class_af
+
+
+def type_of_model(model):
+    list_estimators = getattr(model, 'list_estimators', None)
+    if not list_estimators:
+        return 'simple model'
+    else:
+        if isinstance(list_estimators[0], CalibratedClassifierCV):
+            return 'ensemble of calibrated models'
+        else:
+            return 'ensemble of non calibrated models'
 
 
 def averaged_metadata_list(metadata_fit_list):
@@ -130,16 +142,14 @@ def add_plots_doc(report_doc, ys, y_probas, folds_index):
         memfile.close()
 
 
-def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
-                   loss_metric, peeking_metrics, report_doc, add_plots, report_dfs):
+def evaluate_models(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
+                    loss_metric, peeking_metrics, report_doc, add_plots, report_dfs):
     y_probas = []
     for index, dict_model in enumerate(dict_models):
         y_probas.append(dict_model['model'].predict_proba(Xs[index])[:, 1])
-    if report_doc:
-        plots_report_dfs(report_doc, report_dfs, loss_metric)
 
     # Add a table for comparison of metrics
-    if peeking_metrics and report_doc:
+    if report_doc:
         report_doc.add_heading(f'Winner models of each fold and main metrics', level=2)
         table = report_doc.add_table(rows=len(dict_models) + 1, cols=len(peeking_metrics) + 4)
         table.style = 'TableGrid'
@@ -173,7 +183,9 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
                                   SIZE_SMALL_FONT,
                                   is_cell_table=True)
             row.cells[3].width = Inches(SIZE_COMMENT_COL)
-            write_paragraphs_dict(row.cells[3], dict_model['comments'], SIZE_SMALL_FONT, is_cell_table=True)
+            write_paragraphs_dict(row.cells[3],
+                                  {**{'Type of model': type_of_model(dict_model['model'])},
+                                   **dict_model['comments']}, SIZE_SMALL_FONT, is_cell_table=True)
             for i, metric in enumerate(peeking_metrics):
                 row.cells[i + 4].width = Inches(SIZE_METRIC_COL)
                 value_of_metric = get_metric(metric, 'real')(ys[index], y_probas[index])
@@ -226,6 +238,8 @@ def evaluate_model(dict_models, Xs, ys, X_val_var, y_val_var, folds_index,
             stds.append(std)
             row.cells[len(dict_models) + 2].paragraphs[0].add_run(str(np.round(std, 3)))
         report_doc.add_paragraph(f'The average standard deviation is {np.round(np.mean(stds),3)}')
+    if report_doc:
+        plots_report_dfs(report_doc, report_dfs, loss_metric)
     return
 
 
@@ -309,7 +323,6 @@ def write_intro_doc(report_doc, y, model_search_spaces,
 def write_train_report(report_doc, list_params, list_metrics,
                        list_holdout_metrics, peeking_metrics, list_comments):
     print_holdout_metrics = len(list_holdout_metrics) > 0
-    report_doc.add_heading(f'Report of training in this outer fold', level=2)
     list_loss_metrics = [metric['loss_metric'] for metric in list_metrics]
     index_best_model = list_loss_metrics.index(min(list_loss_metrics))
     report_doc.add_paragraph(

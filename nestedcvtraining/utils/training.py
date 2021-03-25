@@ -14,7 +14,7 @@ from .reporting import (
 import numpy as np
 from collections import Counter
 
-def exists_resampler(pipeline):
+def has_resampler(pipeline):
     return any(
             [
                 hasattr(step[1], "fit_resample")
@@ -220,7 +220,7 @@ def train_inner_model(X, y, model_search_spaces,
         complete_steps = pipeline_post_process.steps + [("model", model)]
         complete_pipeline = Pipeline(complete_steps)
         search_space = model_search_spaces[key]["search_space"]
-        exists_resampler = exists_resampler(pipeline_post_process)
+        exists_resampler = has_resampler(pipeline_post_process)
 
         @use_named_args(search_space)
         def func_to_minimize(**params):
@@ -276,16 +276,20 @@ def train_inner_model(X, y, model_search_spaces,
         )
 
     best_model, index_best_model = find_best_model(list_models, list_metrics)
-    undersampling = list_params[index_best_model].get('undersampling_majority_class', default=False)
+    undersampling = list_params[index_best_model].get('undersampling_majority_class', False)
 
     if not ensemble and undersampling:
-        exists_resampler = exists_resampler(best_model.get_complete_pipeline_to_fit())
-        max_k_undersampling = list_params[index_best_model].get('max_k_undersampling', default=0)
-        best_model = train_ensemble_model_with_undersampling(best_model.get_complete_pipeline_to_fit(),
-                                                X, y, exists_resampler, max_k_undersampling)
+        if verbose:
+            print("Training final model with undersampling technique")
+        exists_resampler = has_resampler(best_model.get_complete_pipeline_to_fit())
+        max_k_undersampling = list_params[index_best_model].get('max_k_undersampling', 0)
+        best_model, _ = train_ensemble_model_with_undersampling(best_model.get_complete_pipeline_to_fit(),
+                                                                X, y, exists_resampler, max_k_undersampling)
     if not ensemble and not undersampling:
-        best_model = best_model.get_complete_pipeline_to_fit().fit(X, y)
-
+        if verbose:
+            print("Training final model")
+        best_model = best_model.get_complete_pipeline_to_fit()
+        best_model.fit(X, y)
     if verbose:
         print("Best model found")
     report_dfs = create_report_dfs(list_params, list_metrics, loss_metric)
