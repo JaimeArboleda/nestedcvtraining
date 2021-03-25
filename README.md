@@ -381,6 +381,40 @@ After I did that, and found that it worked, I added more functionality to make i
 - Adding an option of using undersampling using this [idea](http://proceedings.mlr.press/v94/ksieniewicz18a/ksieniewicz18a.pdf), that is implemented [here](https://github.com/w4k2/umce/blob/master/method.py).
 - And some other features... 
 
+## Naming conventions
+
+This section can help understand the code. 
+
+Naming conventions for the main function, find_best_binary_model:
+- k_outer_fold -> Number of outer loops of the nested Cross Validation, used for validation of models. 
+- k_inner_fold -> Number of inner loops of the nested Cross Validation, used for optimization of parameters and hyperparameters of models. 
+- loss_metric -> 
+- peeking_metrics -> 
+- report_doc
+- report_dfs
+- pipeline_post_process
+- X_val_var, y_val_var ->
+- X_hold_out, y_hold_out ->
+- X_train, y_train -> 
+- inner_model
+- final_model
+
+Naming conventions for the train_inner_model function, which is called in each outer fold (i.e., k_outer_fold times, + 1 for the final model built using the same procedure on the whole dataset) and returns the inner_model (or the final model in the last call) and some metadata for the reporting:
+
+    list_params = []
+    list_models = []
+    list_metrics = []
+    list_holdout_metrics = []
+    list_comments = []
+complete_pipeline
+ensemble_model, metrics, comments
+ensemble_model_with_resampling
+ensemble_model_without_resampling
+best_model, index_best_model
+undersampling
+
+TO CONTINUE
+
 ## Author
 
 [Jaime Arboleda @JaimeArboleda](https://github.com/JaimeArboleda)
