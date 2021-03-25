@@ -492,7 +492,7 @@ Naming conventions for the train_inner_model function, which is called in each o
 [Jaime Arboleda @JaimeArboleda](https://github.com/JaimeArboleda)
 
 - <[Linkedin](https://www.linkedin.com/in/jaime-arboleda-castilla-1a676b207/)>
-- <[Mail](jaime.arboleda.castilla@gmail.com)>
+- <[Mail](mailto:jaime.arboleda.castilla@gmail.com)>
 
 ## Contributors are welcome!
 
