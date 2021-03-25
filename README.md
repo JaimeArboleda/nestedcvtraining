@@ -322,7 +322,6 @@ There are different ways of training the models regarding this parameters, that 
     - Both calibrated an ensemble are False. 
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
       - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
-      - So we have k models, which are instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
       - Those k models, are just estimators (not pipeline instances), and are evaluated on the validation set for the scoring of the loss_metric. 
       - Finally, when the best model is found, a pipeline + model instance with the best parameters is fitted on the whole dataset, and this is returned.
 
