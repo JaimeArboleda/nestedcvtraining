@@ -284,41 +284,44 @@ There are different ways of training the models regarding this parameters, that 
   - Undersampling_majority_class is True. 
     - Calibrated is True. 
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
-      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. ¡VOY POR AQUI!
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
       - The training will be done using the undersampling_majority_class approach, which generates an ensemble of m models taking into account the imbalance ratio. 
-      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are in fact instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
+      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are just estimators (not pipeline instances). 
       - Those k models are calibrated using their own validation set. 
       - The calibrated models are evaluated on the validation set for the scoring of the loss_metric. 
-      - Finally, when the best model is found, this ensemble of calibrated ensemble models is returned (this is the most complex option).
+      - Finally, when the best model is found, this ensemble of calibrated ensemble models is returned. This object, when making a prediction, applies the pipeline to the features, and then averages the prediction of all models that are inside. 
     - Calibrated is False an ensemble is True.
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
       - The training will be done using the undersampling_majority_class approach, which generates an ensemble of m models taking into account the imbalance ratio. 
-      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are in fact instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
+      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are just estimators (not pipeline instances). 
       - Those k models are evaluated on the validation set for the scoring of the loss_metric. 
-      - Finally, when the best model is found, this ensemble of ensemble models is returned.
+      - Finally, when the best model is found, this ensemble of ensemble models is returned. This object, when making a prediction, applies the pipeline to the features, and then averages the prediction of all models that are inside. 
     - Both calibrated an ensemble are False. 
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
       - The training will be done using the undersampling_majority_class approach, which generates an ensemble of m models taking into account the imbalance ratio. 
-      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are in fact instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
+      - So we have k models, but each of this models is an ensemble of m models. Those k * m  models are just estimators (not pipeline instances). 
       - Those k models are evaluated on the validation set for the scoring of the loss_metric. 
       - Finally, when the best model is found, the undersampling_majority_class training procedure is applied to a pipeline + model instance with the whole dataset, so that what is returned is an ensemble of m models.
   - Undersampling_majority_class is False. 
     - Calibrated is True.
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
-      - So we have k models, which are instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
-      - Those k models are calibrated using their own validation set. 
-      - Those k models are evaluated on the validation set for the scoring of the loss_metric. 
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
+      - Those k models, are just estimators (not pipeline instances), and are calibrated using their own validation set. 
+      - Those calibrated k models are evaluated on the validation set for the scoring of the loss_metric. 
       - Finally, when the best model is found, this ensemble of calibrated models is returned.
     - Calibrated is False an ensemble is True.
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
-      - So we have k models, which are instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
-      - Those k models are evaluated on the validation set for the scoring of the loss_metric. 
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
+      - Those k models, are just estimators (not pipeline instances), and are evaluated on the validation set for the scoring of the loss_metric. 
       - Finally, when the best model is found, this ensemble of models is returned.
     - Both calibrated an ensemble are False. 
       - For each combination of parameters, k models will be trained (one for each fold of the inner loop). 
+      - The post_process_pipeline is applied to the whole dataset (not for each fold separatedly). This is more efficient and there is no risk of data leakage because the outer fold is preserved. 
       - So we have k models, which are instances of a pipeline object, composed by the pipeline + the model (so the pipeline is fitted separatedly in each step). 
-      - Those k models are evaluated on the validation set for the scoring of the loss_metric. 
-      - Finally, when the best model is found, a pipeline + model instance with the best parameters is fitted on the whole dataset and this is returned.
+      - Those k models, are just estimators (not pipeline instances), and are evaluated on the validation set for the scoring of the loss_metric. 
+      - Finally, when the best model is found, a pipeline + model instance with the best parameters is fitted on the whole dataset, and this is returned.
 
 This package follows all these rules and recommended practices: 
 1. You should only use a Cross Validation step for one thing: either for model selection, either for estimating the error of the model. If you use it for both things, you are at risk of underestimating the error of the model. 
