@@ -129,7 +129,7 @@ def find_best_binary_model(
                  each key, a dataframe with all inner models built with their
                  params and loss_metric.
     """
-
+# TODO: Add new parameter information
     # Validation of inputs
     X, y = check_X_y(X, y,
                      accept_sparse=['csc', 'csr', 'coo'],
