@@ -1,43 +1,34 @@
 import sklearn.pipeline
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from skopt import gp_minimize
-from docx import Document
-from docx.shared import Inches
-from nestedcvtraining.utils.training import train_inner_model
-from nestedcvtraining.utils.metrics import is_supported
-from nestedcvtraining.utils.reporting import evaluate_models, reporting_width, merge_docs, write_intro_doc, merge_report_dfs
+from skopt.space import Dimension
+from .utils.reporting import LoopInfo
+from .utils.training import train_model
 from collections import Counter
 from sklearn.base import TransformerMixin
-from skopt.space.transformers import Identity
-from skopt.space import Dimension
+from sklearn.metrics._scorer import _BaseScorer
 from sklearn.utils.validation import check_X_y
 from inspect import isfunction, signature
 
 
-
-
-def find_best_binary_model(
+def find_best_model(
         X,
         y,
         model_search_spaces,
-        k_outer_fold=5,
-        skip_outer_folds=[],
-        k_inner_fold=5,
-        skip_inner_folds=[],
+        optimizing_metric,
+        k_outer=5,
+        skip_outer_folds=None,
+        k_inner=5,
+        skip_inner_folds=None,
         n_initial_points=5,
         n_calls=10,
         calibrated=False,
-        ensemble=False,
-        loss_metric='average_precision',
-        peeking_metrics=[],
-        report_level=11,
-        size_variance_validation=20,
+        other_metrics=None,
         skopt_func=gp_minimize,
         verbose=False,
-        build_final_model=True
-    ):
-    """Finds best binary calibrated classification model and optionally
-    generate a report doing a nested cross validation. In the inner
+):
+    """Finds the best calibrated classification model and provides
+    a dataframe with information of the performed nested cross validation. In the inner
     cross validation, doing a Bayesian Search, the best parameters are found.
     In the outer cross validation, the model is validated.
     Finally, the whole procedure is used for the full dataset to return
@@ -50,27 +41,29 @@ def find_best_binary_model(
         Feature set.
 
     y : np.array
-        Classification target to predict. For the moment only binary labels are allowed, and
-        values are supposed to be {0, 1} or {-1, 1}
+        Classification target to predict. It works for multiclass and binary classifications.
+
+    optimizing_metric : callable, default=None
+        Metric to use in order to find the best parameters in Bayesian Search.
 
     model_search_spaces : Dict[str : List[List[skopt.Space]]
-        Dict of models to try inside of the inner loops. For each model, there is
+        Dict of models to try inside the inner loops. For each model, there is
         the corresponding list of space objects to delimit where the parameters live,
         including the pipeline postprocess to make. It admits also an option to set
         undersampling_majority_class method. It admits two values, True or False. If True
         it builds an ensemble model in the inner loop by creating many balanced folds
-        by using the minority class with a undersampling of the majority class. If using
+        by using the minority class with undersampling of the majority class. If using
         this option, it also admits an Int max_k_undersampling, in order to limit the number of
         splits made for this (because if the imbalance ratio is for example 1000:1, it will
         create 1000 splits, which can be too much).
 
-    k_outer_fold : int, default=5
+    k_outer : int, default=5
         Number of folds for the outer cross-validation.
 
     skip_outer_folds : list, default=None
         If set, list of folds to skip during the loop.
 
-    k_inner_fold : int, default=5
+    k_inner : int, default=5
         Number of folds for the inner cross-validation.
 
     skip_inner_folds : list, default=None
@@ -85,30 +78,9 @@ def find_best_binary_model(
     calibrated : bool, default=False
         If True, all models are calibrated using CalibratedClassifierCV
 
-    ensemble : bool, default=False
-        If True, an ensemble model is built in the inner training loop. Otherwise,
-        a model fitted with the whole inner dataset will be built.
-
-    loss_metric : str, default='auc'
-        Metric to use in order to find best parameters in Bayesian Search. Options:
-        - roc_auc
-        - average_precision
-        - neg_brier_score
-        - neg_log_loss
-        - histogram_width
-
-    peeking_metrics : List[str], default=[]
+    other_metrics : List[str], default=[]
         If not empty, in the report there will be a comparison between the metric of
         evaluation on the inner fold and the list of metrics in peeking_metrics.
-
-    report_levels : int, default=11
-        If 00, no report is returned.
-        If 01, plots are not included. All peeking-metrics are evaluated on the outer fold for each inner-fold model.
-        If 10, plots are included. No evaluation of peeking-metrics on the outer fold for each inner-fold model.
-        If 11, a full report (it can be more time consuming).
-
-    size_variance_validation : int, default=20
-        Number of samples to use to check variance of different models.
 
     skopt_func : callable, default=gp_minimize
         Minimization function of the skopt library to be used.
@@ -116,159 +88,85 @@ def find_best_binary_model(
     verbose : bool, default=False
         If True, you can trace the progress in the terminal.
 
-    build_final_model : bool, default=True
-        If False, no final model is built (only the report doc is returned). It can be convenient
-        during the experimental phase.
-
     Returns
     -------
     model : Model trained with the full dataset using the same procedure
             as in the inner cross validation.
-    report_doc : Document python-docx if report_level > 0. Otherwise, None
     report_dfs : Dict of dataframes, one key for each model in model_search_spaces.
                  each key, a dataframe with all inner models built with their
                  params and loss_metric.
     """
-# TODO: Add new parameter information
     # Validation of inputs
     X, y = check_X_y(X, y,
                      accept_sparse=['csc', 'csr', 'coo'],
                      force_all_finite=False, allow_nd=True)
     counter = Counter(y)
-    if len(counter) > 2:
-        raise NotImplementedError("Multilabel classification is not yet implemented")
+
     y_values = set(counter.keys())
-    if y_values != {-1, 1} and y_values != {0, 1}:
-        raise NotImplementedError("Values of target are expected to be in {0, 1} or in {-1, 1}")
+    if y_values != set(range(len(counter))):
+        raise NotImplementedError("Values of target are expected to be in {0, 1, ..., n-1} where n is the number of "
+                                  "classes")
 
     if not _validate_model_search_space(model_search_spaces):
         raise ValueError("model_search_spaces is not well formed")
 
-    if not _validate_folds(k_outer_fold, skip_outer_folds, k_inner_fold, skip_inner_folds):
+    if skip_inner_folds is None:
+        skip_inner_folds = []
+    if skip_outer_folds is None:
+        skip_outer_folds = []
+    if other_metrics is None:
+        other_metrics = []
+
+    if not _validate_folds(k_outer, skip_outer_folds, k_inner, skip_inner_folds):
         raise ValueError("Folds parameters are not well formed")
 
     if not _validate_bayesian_search(n_initial_points, n_calls, skopt_func):
         raise ValueError("Bayesian search parameters are not well formed")
 
-    if not is_supported(loss_metric):
-        raise NotImplementedError(f"Loss metric {loss_metric} is not implemented.")
+    if not isinstance(optimizing_metric, _BaseScorer):
+        raise NotImplementedError(f"The metric must be provided as a scoring function, as output by sklearn make_scorer")
 
-    if not isinstance(peeking_metrics, list):
+    if not isinstance(other_metrics, list):
         raise ValueError("Peeking metrics must be a list of str")
 
-    for metric in peeking_metrics:
-        if not is_supported(metric):
-            raise NotImplementedError(f"Metric {metric} is not implemented.")
+    for metric in other_metrics:
+        if not isinstance(metric, _BaseScorer):
+            raise NotImplementedError(f"The metric must be provided as a scoring function, as output by sklearn "
+                                      f"make_scorer")
 
     if not isinstance(calibrated, bool):
         raise ValueError("calibrated must be a boolean")
 
-    if not isinstance(ensemble, bool):
-        raise ValueError("ensemble must be a boolean")
-
     if not isinstance(verbose, bool):
         raise ValueError("verbose must be a boolean")
 
-    if not isinstance(build_final_model, bool):
-        raise ValueError("build_final_model must be a boolean")
-
-    if not isinstance(size_variance_validation, int):
-        raise ValueError("size_variance_validation must be an int")
-
-    if size_variance_validation < 0 or size_variance_validation > len(y):
-        raise ValueError("size_variance_validation cannot be negative nor bigger than number of instances")
-
-    if size_variance_validation > 0 and size_variance_validation < len(counter):
-        raise ValueError("size_variance_validation, if not zero, cannot be less than number of classes")
-
-    if report_level not in [0, 1, 10, 11]:
-        raise ValueError("report_level must be either 0, 1, 10 or 11")
-
-    # End of validation of inputs
-
-    if calibrated:
-        ensemble = True
-
-    if loss_metric not in peeking_metrics:
-        peeking_metrics.append(loss_metric)
-
-    if report_level > 0:
-        outer_report_doc = Document()
-        section = outer_report_doc.sections[0]
-        section.page_width = Inches(reporting_width(report_level, peeking_metrics))
-        outer_report_doc.add_heading('Report of training', 0)
-
-        write_intro_doc(
-            outer_report_doc, y, model_search_spaces,
-            k_outer_fold, skip_outer_folds, k_inner_fold,
-            skip_inner_folds, n_initial_points, n_calls, ensemble,
-            calibrated, loss_metric, size_variance_validation,
-            skopt_func)
-        inner_report_doc = Document()
-        section = inner_report_doc.sections[0]
-        section.page_width = Inches(reporting_width(report_level, peeking_metrics))
-    else:
-        outer_report_doc = None
-        inner_report_doc = None
-
-    X_val_var = []
-    y_val_var = []
-    if size_variance_validation > 0:
-        X, X_val_var, y, y_val_var = train_test_split(X, y, test_size=size_variance_validation, random_state=42, stratify=y)
-
-    outer_cv = StratifiedKFold(n_splits=k_outer_fold)
-    dict_inner_models = []
-    list_report_dfs = []
-    outer_Xs = []
-    outer_ys = []
-    folds_index = []
-    if inner_report_doc:
-        inner_report_doc.add_heading(f'Report of inner trainings', level=1)
+    outer_cv = StratifiedKFold(n_splits=k_outer)
+    loop_info = LoopInfo()
     for k, (train_index, test_index) in enumerate(outer_cv.split(X, y)):
         if k not in skip_outer_folds:
-            folds_index.append(k)
-            if inner_report_doc:
-                inner_report_doc.add_heading(f'Report of inner training in fold {k} of outer Cross Validation', level=2)
-            X_hold_out = X[test_index] if report_level in [1, 11] else []
-            y_hold_out = y[test_index] if report_level in [1, 11] else []
-            inner_model, model_params, model_comments, report_dfs = train_inner_model(
-                X=X[train_index], y=y[train_index], model_search_spaces=model_search_spaces,
-                X_hold_out=X_hold_out, y_hold_out=y_hold_out,
-                k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                n_initial_points=n_initial_points, n_calls=n_calls, ensemble=ensemble,
-                calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=peeking_metrics,
-                verbose=verbose, skopt_func=skopt_func, report_doc=inner_report_doc)
-            dict_inner_models.append({'model': inner_model,
-                                 'params': model_params,
-                                 'comments': model_comments})
-            list_report_dfs.append(report_dfs)
-            outer_Xs.append(X[test_index])
-            outer_ys.append(y[test_index])
-    if outer_report_doc:
-        outer_report_doc.add_heading(f'Report of validation of the models in the outer Cross Validation', level=1)
-    add_plots = True if report_level > 9 else False
-    report_dfs = merge_report_dfs(*list_report_dfs)
-    evaluate_models(
-        dict_models=dict_inner_models, Xs=outer_Xs, ys=outer_ys,
-        X_val_var=X_val_var, y_val_var=y_val_var,
-        folds_index=folds_index, report_doc=outer_report_doc,
-        loss_metric=loss_metric, peeking_metrics=peeking_metrics,
-        add_plots=add_plots, report_dfs=report_dfs
-    )
+            _, inner_loop_info = train_model(
+                X_outer_train=X[train_index], y_outer_train=y[train_index], model_search_spaces=model_search_spaces,
+                X_outer_test=X[test_index], y_outer_test=y[test_index],
+                k_inner=k_inner, skip_inner_folds=skip_inner_folds,outer_kfold=k,
+                n_initial_points=n_initial_points, n_calls=n_calls,
+                calibrated=calibrated, optimizing_metric=optimizing_metric, other_metrics=other_metrics,
+                verbose=verbose, skopt_func=skopt_func, refit_best=False, num_classes=len(y_values))
+            loop_info.extend(inner_loop_info)
+
+
     # After assessing the procedure, we repeat it on the full dataset:
     final_model = None
-    if build_final_model:
-        final_model, _, _, _ = train_inner_model(
-                X=X, y=y, model_search_spaces=model_search_spaces,
-                X_hold_out=[], y_hold_out=[],
-                k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                n_initial_points=n_initial_points, n_calls=n_calls, ensemble=ensemble,
-                calibrated=calibrated, loss_metric=loss_metric, peeking_metrics=[],
-                verbose=verbose, skopt_func=skopt_func, report_doc=None)
-    return final_model, merge_docs(outer_report_doc, inner_report_doc), report_dfs
+    final_model, _ = train_model(
+        X_outer_train=X, y_outer_train=y, model_search_spaces=model_search_spaces,
+        X_outer_test=[], y_outer_test=[],
+        k_inner=k_inner, skip_inner_folds=skip_inner_folds,outer_kfold=None,
+        n_initial_points=n_initial_points, n_calls=n_calls,
+        calibrated=calibrated, optimizing_metric=optimizing_metric, other_metrics=[],
+        verbose=verbose, skopt_func=skopt_func, refit_best=True, num_classes=len(y_values))
+    return final_model, loop_info.to_dataframe()
 
 
-class OptionedPostProcessTransformer(TransformerMixin):
+class OptionedTransformer(TransformerMixin):
     """This class converts a dictionary of different options of post-process
     (each option will be a fully defined pipeline) in a transformer that
     has only one parameter, the option.
@@ -336,15 +234,6 @@ class OptionedPostProcessTransformer(TransformerMixin):
         return not exists_resampler
 
 
-class MidasIdentity(Identity):
-    """
-    Convenience class for creating a Pipeline that does not perform any transformation.
-    It can be handy when in combination with OptionedPostProcessTransformer.
-    """
-    def fit(self, X, y):
-        return self
-
-
 def _validate_model_search_space(model_search_spaces):
     if not isinstance(model_search_spaces, dict):
         raise ValueError("model_search_spaces must be a dict")
@@ -352,19 +241,19 @@ def _validate_model_search_space(model_search_spaces):
         if not isinstance(model_search, dict):
             raise ValueError("model_search_spaces must be a dict of dicts")
         for (key, value) in model_search.items():
-            if key not in ['model', 'pipeline_post_process', 'search_space']:
-                raise ValueError("Some inner key is not in ['model', 'pipeline_post_process', 'search_space']")
+            if key not in ['model', 'pipeline', 'search_space']:
+                raise ValueError("Some inner key is not in ['model', 'pipeline', 'search_space']")
             if key == 'model':
                 if not hasattr(value, 'predict_proba'):
                     raise ValueError("Estimator has not predict_proba method")
                 if not hasattr(value, 'fit'):
                     raise ValueError("Estimator has not fit method")
-            if key == 'pipeline_post_process':
+            if key == 'pipeline':
                 if value:
                     if not isinstance(value, sklearn.pipeline.Pipeline):
-                        raise ValueError("pipeline_post_process is not a pipeline")
+                        raise ValueError("pipeline is not a pipeline")
             if key == 'search_space':
-                if not isinstance(value,list):
+                if not isinstance(value, list):
                     raise ValueError("search_space is not a list")
                 for element in value:
                     if not isinstance(element, Dimension):
@@ -412,4 +301,3 @@ def _validate_bayesian_search(n_initial_points, n_calls, skopt_func):
     if 'n_calls' not in kwargs:
         raise ValueError("skopt_func must have n_calls in kwargs")
     return True
-

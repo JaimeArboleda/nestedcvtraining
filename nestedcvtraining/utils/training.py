@@ -1,39 +1,22 @@
 from sklearn.model_selection import StratifiedKFold, KFold
 from skopt.utils import use_named_args
-from .pipes_and_transformers import MidasEnsembleClassifiersWithPipeline, wrap_pipeline, get_metadata_fit, _MidasIdentity
+from .pipes_and_transformers import Ensemble, IdentityTransformer
 from imblearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from copy import deepcopy
 from .metrics import evaluate_metrics, average_metrics
-from .reporting import (
-    write_train_report,
-    prop_minority_to_rest_class,
-    MetadataFit,
-    averaged_metadata_list, create_report_dfs,
-)
+from .reporting import LoopInfo
 import numpy as np
-from collections import Counter
-
-def has_resampler(pipeline):
-    return any(
-            [
-                hasattr(step[1], "fit_resample")
-                for step in pipeline.steps
-            ]
-    )
+from collections import Counter, defaultdict
 
 
-def train_model_without_undersampling(model, X, y, exists_resampler):
-    fold_model = deepcopy(model)
-    fold_model.fit(X, y)
-    if exists_resampler:  # In this case, model is a pipeline with a resampler.
-        metadata = get_metadata_fit(fold_model)
-    else:
-        metadata = MetadataFit(len(y), prop_minority_to_rest_class(Counter(y)))
-    return fold_model, metadata
+def _simple_train_without_undersampling(model, X, y):
+    new_model = deepcopy(model)
+    new_model.fit(X, y)
+    return new_model
 
 
-def train_ensemble_model_with_undersampling(model, X, y, exists_resampler, max_k_undersampling):
+def _simple_train_with_undersampling(model, X, y, max_k_undersampling):
     # See https://github.com/w4k2/umce/blob/master/method.py
     # Firstly we analyze the training set to find majority class and to
     # establish the imbalance ratio
@@ -45,228 +28,151 @@ def train_ensemble_model_with_undersampling(model, X, y, exists_resampler, max_k
 
     # K is the imbalanced ratio round to int (with a minimum of 2 and a max of max_k_undersamling)
     imbalance_ratio = (
-        len(rest_class_idxs) / len(minority_class_idxs)
+            len(rest_class_idxs) / len(minority_class_idxs)
     )
     k_majority_class = int(np.around(imbalance_ratio))
     k_majority_class = k_majority_class if k_majority_class < max_k_undersampling else max_k_undersampling
     k_majority_class = k_majority_class if k_majority_class > 2 else 2
 
-    fold_models = []
-    list_metadata = []
-    kf = KFold(n_splits=k_majority_class)
-    for _, index in kf.split(rest_class_idxs):
-        fold_model = deepcopy(model)
-        fold_idx = np.concatenate([minority_class_idxs, rest_class_idxs[index]])
-        X_train_f, y_train_f = X[fold_idx], y[fold_idx]
-        fold_model.fit(X_train_f, y_train_f)
-        fold_models.append(fold_model)
-        if exists_resampler:  # In this case, model is a pipeline with a resampler.
-            list_metadata.append(get_metadata_fit(fold_model))
-        else:
-            list_metadata.append(
-                MetadataFit(len(y_train_f), prop_minority_to_rest_class(Counter(y_train_f)))
-            )
-    ensemble_model = MidasEnsembleClassifiersWithPipeline(None, fold_models)
+    inner_models = []
+    kf = StratifiedKFold(n_splits=k_majority_class)
+    for _, index in kf.split(rest_class_idxs, y[rest_class_idxs]):
+        inner_model = deepcopy(model)
+        idxs = np.concatenate([minority_class_idxs, rest_class_idxs[index]])
+        X_train_inner, y_train_inner = X[idxs], y[idxs]
+        inner_model.fit(X_train_inner, y_train_inner)
+        inner_models.append(inner_model)
+    ensemble_model = Ensemble(None, inner_models)
 
-    return ensemble_model, averaged_metadata_list(list_metadata)
+    return ensemble_model
 
 
-def ensemble_model_with_resampling(X, y, pipeline_post_process,
-                                   model, loss_metric, peeking_metrics,
-                                   k_inner_fold, skip_inner_folds, undersampling_majority_class,
-                                   max_k_undersampling, calibrated
-                                   ):
+def _train_cv(X, y, pipeline,
+              model, model_name, params, optimizing_metric, other_metrics,
+              k_inner, skip_inner_folds, undersampling_majority_class, num_classes,
+              max_k_undersampling, calibrated, outer_kfold
+              ):
+    """
+    This function is called in the process of optimization of hyperparameters. Given a concrete model definition, it performs:
+    * Cross validation (for better measure of error of each model).
+    * Using the available train set (for each loop in the cross validation), it trains the model.
+    * It evaluates the performance using the available test set.
+    * In case of calibrated, it calibrates each inner model against the available validation set
+    * For convenience, it packs all inner models into an Ensemble, that could be further trained if not calibrated
+    """
+    fit_info = LoopInfo()
+    fit_info.name.append(model_name)
+    fit_info.best.append(False)
+    fit_info.outer_kfold.append(outer_kfold)
+    fit_info.params.append(params)
+    inner_models = []  # List of all models built in this k-fold
+    inner_metrics = defaultdict(list)  # List of all metrics
 
-    pipeline_post_process = wrap_pipeline(pipeline_post_process)
-    complete_steps = pipeline_post_process.steps + [("model", model)]
-    complete_pipeline = Pipeline(complete_steps)
-    fold_models = []
-    fold_metrics = []
-    list_metadata = []
-    comments = {}
-    comments["option"] = "build model with resampling"
-    inner_cv = StratifiedKFold(n_splits=k_inner_fold)
-    for k, (train_index, test_index) in enumerate(inner_cv.split(X, y)):
+    inner_cv = StratifiedKFold(n_splits=k_inner)
+    has_resampler = any([hasattr(step[1], "fit_resample") for step in pipeline.steps])
+    if has_resampler:
+        complete_steps = pipeline.steps + [("model", model)]
+        model_to_train = Pipeline(complete_steps)
+        pipeline_to_include = None
+    else:
+        model_to_train = model
+        pipeline_to_include = pipeline
+        X = pipeline.fit_transform(X, y)
+
+    for k, (train_index, validation_index) in enumerate(inner_cv.split(X, y)):
         if k not in skip_inner_folds:
-            X_train, y_train, X_test, y_test = (
+            X_inner_train, y_inner_train, X_inner_validation, y_inner_validation = (
                 X[train_index],
                 y[train_index],
-                X[test_index],
-                y[test_index],
+                X[validation_index],
+                y[validation_index],
             )
             if undersampling_majority_class:
-                (
-                    fold_base_model,
-                    fold_metadata,
-                ) = train_ensemble_model_with_undersampling(
-                    complete_pipeline, X_train, y_train, True, max_k_undersampling
+                inner_model = _simple_train_with_undersampling(
+                    model_to_train, X_inner_train, y_inner_train, max_k_undersampling
                 )
             else:
-                fold_base_model, fold_metadata = train_model_without_undersampling(
-                    complete_pipeline, X_train, y_train, True
+                inner_model = _simple_train_without_undersampling(
+                    model_to_train, X_inner_train, y_inner_train
                 )
-            list_metadata.append(fold_metadata)
-            fold_final_model = fold_base_model
             if calibrated:
-                fold_final_model = CalibratedClassifierCV(
-                    fold_base_model, method="isotonic", cv="prefit"
+                inner_model = CalibratedClassifierCV(
+                    inner_model, method="isotonic", cv="prefit"
                 )
-                fold_final_model.fit(X_test, y_test)
-            fold_models.append(fold_final_model)
-            y_proba = fold_final_model.predict_proba(X_test)[:, 1]
-            fold_metrics.append(
-                evaluate_metrics(y_test, y_proba, loss_metric, peeking_metrics)
-            )
-    averaged_metrics = average_metrics(fold_metrics)
-    complete_model = MidasEnsembleClassifiersWithPipeline(None, fold_models)
-    metadata = averaged_metadata_list(list_metadata)
-    comments["number of folds"] = len(fold_models)
-    comments[
-        "average size of training set before resampling"
-    ] = metadata.get_num_init_samples_bf()
-    comments[
-        "average prop of minority class before resampling"
-    ] = metadata.get_prop_minority_class_bf()
-    comments[
-        "average size of training set after resampling"
-    ] = metadata.get_num_init_samples_af()
-    comments[
-        "average prop of minority class after resampling"
-    ] = metadata.get_prop_minority_class_af()
-    return complete_model, averaged_metrics, comments
+                inner_model.fit(X_inner_validation, y_inner_validation)
+            inner_models.append(inner_model)
+            y_proba = inner_model.predict_proba(X_inner_validation)
+            evaluated_metrics = evaluate_metrics(y_inner_validation, y_proba, optimizing_metric, other_metrics, num_classes)
+            for m in evaluated_metrics:
+                inner_metrics[m].extend(evaluated_metrics[m])
 
-
-def ensemble_model_without_resampling(X, y, pipeline_post_process,
-                                      model, loss_metric, peeking_metrics,
-                                      k_inner_fold, skip_inner_folds, undersampling_majority_class,
-                                      max_k_undersampling, calibrated
-                                      ):
-
-    list_metadata = []
-    fold_models = []  # List of all models builded in this k-fold
-    fold_metrics = []  # List of all metrics
-    comments = {}  # Dict of comments, used for reporting
-    comments["option"] = "build model without resampling"
-
-    inner_cv = StratifiedKFold(n_splits=k_inner_fold)
-    pipeline_post_process = deepcopy(pipeline_post_process)
-    # For efficiency we transform the data once, for all folds
-    X_t = pipeline_post_process.fit_transform(X, y)
-    y_t = y
-    for k, (train_index, test_index) in enumerate(inner_cv.split(X_t, y_t)):
-        if k not in skip_inner_folds:
-            X_train, y_train, X_test, y_test = (
-                X_t[train_index],
-                y_t[train_index],
-                X_t[test_index],
-                y_t[test_index],
-            )
-            if undersampling_majority_class:
-                fold_base_model, fold_metadata = train_ensemble_model_with_undersampling(
-                    model, X_train, y_train, False, max_k_undersampling
-                )
-            else:
-                fold_base_model, fold_metadata = train_model_without_undersampling(
-                    model, X_train, y_train, False
-                )
-            list_metadata.append(fold_metadata)
-            fold_final_model = fold_base_model
-            if calibrated:
-                fold_final_model = CalibratedClassifierCV(
-                    fold_base_model, method="isotonic", cv="prefit"
-                )
-                fold_final_model.fit(X_test, y_test)
-            fold_models.append(fold_final_model)
-            y_proba = fold_final_model.predict_proba(X_test)[:, 1]
-            fold_metrics.append(
-                evaluate_metrics(y_test, y_proba, loss_metric, peeking_metrics)
-            )
-    averaged_metrics = average_metrics(fold_metrics)
-    metadata = averaged_metadata_list(list_metadata)
-    complete_model = MidasEnsembleClassifiersWithPipeline(
-        pipeline_post_process, fold_models
+    averaged_metrics = average_metrics(inner_metrics)
+    fit_info.inner_test_metrics = averaged_metrics
+    complete_model = Ensemble(
+        pipeline_to_include, inner_models
     )
-    comments["number of folds"] = len(fold_models)
-    comments["average size of training set"] = metadata.get_num_init_samples_bf()
-    comments["average prop of minority class"] = metadata.get_prop_minority_class_bf()
-    return complete_model, averaged_metrics, comments
+    return complete_model, fit_info
 
 
-def find_best_model(list_models, list_metrics):
-    list_loss_metrics = [metric["loss_metric"] for metric in list_metrics]
-    index_best_model = list_loss_metrics.index(min(list_loss_metrics))
-    best_model = list_models[index_best_model]
-    return best_model, index_best_model
+def find_best_model(loop_info: LoopInfo):
+    optimizing_metrics = loop_info.inner_test_metrics["optimizing_metric"]
+    index_best_model = optimizing_metrics.index(min(optimizing_metrics))
+    return index_best_model
 
 
-def train_inner_model(X, y, model_search_spaces,
-                      X_hold_out, y_hold_out, k_inner_fold,
-                      skip_inner_folds, n_initial_points, n_calls, ensemble,
-                      calibrated, loss_metric, peeking_metrics,
-                      skopt_func, verbose, report_doc):
+def train_model(X_outer_train, y_outer_train, model_search_spaces,
+                X_outer_test, y_outer_test, k_inner, outer_kfold,
+                skip_inner_folds, n_initial_points, n_calls,
+                calibrated, optimizing_metric, other_metrics, num_classes,
+                skopt_func, verbose, refit_best):
+    loop_info = LoopInfo()
+    models = []
+    all_params = []
 
-    list_params = []
-    list_models = []
-    list_metrics = []
-    list_holdout_metrics = []
-    list_comments = []
-
+    # We can have several keys in the search space. In this case, we loop over all of them.
     for key in model_search_spaces.keys():
-        pipeline_post_process = model_search_spaces[key]["pipeline_post_process"]
-        if not pipeline_post_process:
-            pipeline_post_process = Pipeline([("identity", _MidasIdentity())])
+        pipeline = model_search_spaces[key]["pipeline"]
+        if not pipeline:
+            pipeline = Pipeline([("identity", IdentityTransformer())])
         model_name = key
         model = model_search_spaces[key]["model"]
-        complete_steps = pipeline_post_process.steps + [("model", model)]
+        complete_steps = pipeline.steps + [("model", model)]
         complete_pipeline = Pipeline(complete_steps)
         search_space = model_search_spaces[key]["search_space"]
-        exists_resampler = has_resampler(pipeline_post_process)
 
         @use_named_args(search_space)
         def func_to_minimize(**params):
-            copy_params = params.copy()
-            undersampling_majority_class = copy_params.pop(
+            params_copy = params.copy()
+            undersampling_majority_class = params_copy.pop(
                 "undersampling_majority_class", False
             )
-            max_k_undersampling = copy_params.pop(
+            max_k_undersampling = params_copy.pop(
                 "max_k_undersampling", 0
             )
+            all_params.append(params)
 
-            complete_pipeline.set_params(**copy_params)
-            list_params.append({**params, **{"model": model_name}})
+            complete_pipeline.set_params(**params_copy)
             if verbose:
                 print(f"Optimizing model {model_name}\n")
                 print(f"With parameters {params}\n")
 
-            if exists_resampler:
-                ensemble_model, metrics, comments = ensemble_model_with_resampling(
-                    X=X, y=y, pipeline_post_process=pipeline_post_process,
-                    model=model, loss_metric=loss_metric, peeking_metrics=peeking_metrics,
-                    k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                    undersampling_majority_class=undersampling_majority_class,
-                    max_k_undersampling=max_k_undersampling, calibrated=calibrated
+            fitted_model, fitted_info = _train_cv(
+                model_name=model_name, params=params,
+                X=X_outer_train, y=y_outer_train, pipeline=pipeline, num_classes=num_classes,
+                model=model, optimizing_metric=optimizing_metric, other_metrics=other_metrics,
+                k_inner=k_inner, skip_inner_folds=skip_inner_folds, outer_kfold=outer_kfold,
+                undersampling_majority_class=undersampling_majority_class,
+                max_k_undersampling=max_k_undersampling, calibrated=calibrated
+            )
+            models.append(fitted_model)
+            if len(y_outer_test) > 0:
+                y_outer_test_proba = fitted_model.predict_proba(X_outer_test)
+                fitted_info.outer_test_metrics = evaluate_metrics(
+                    y_outer_test, y_outer_test_proba, optimizing_metric, other_metrics, num_classes
                 )
-            else:
-                ensemble_model, metrics, comments = ensemble_model_without_resampling(
-                    X=X, y=y, pipeline_post_process=pipeline_post_process,
-                    model=model, loss_metric=loss_metric, peeking_metrics=peeking_metrics,
-                    k_inner_fold=k_inner_fold, skip_inner_folds=skip_inner_folds,
-                    undersampling_majority_class=undersampling_majority_class,
-                    max_k_undersampling=max_k_undersampling, calibrated=calibrated
-                )
-            list_models.append(ensemble_model)
-            list_metrics.append(metrics)
-            list_comments.append(comments)
-            if verbose:
-                print(f"Metric is {metrics['loss_metric']}\n")
-            if len(y_hold_out) > 0:
-                y_hold_out_proba = ensemble_model.predict_proba(X_hold_out)[:, 1]
-                list_holdout_metrics.append(
-                    evaluate_metrics(
-                        y_hold_out, y_hold_out_proba, loss_metric, peeking_metrics
-                    )
-                )
-            return metrics["loss_metric"]
+            loop_info.extend(fitted_info)
+            # We make it negative because in skopt the objective is minimizing a function
+            return - fitted_info.inner_test_metrics["optimizing_metric"][0]
 
         # perform optimization
         skopt_func(
@@ -275,29 +181,21 @@ def train_inner_model(X, y, model_search_spaces,
             n_calls=n_calls,
         )
 
-    best_model, index_best_model = find_best_model(list_models, list_metrics)
-    undersampling = list_params[index_best_model].get('undersampling_majority_class', False)
 
-    if not ensemble and undersampling:
-        if verbose:
-            print("Training final model with undersampling technique")
-        exists_resampler = has_resampler(best_model.get_complete_pipeline_to_fit())
-        max_k_undersampling = list_params[index_best_model].get('max_k_undersampling', 0)
-        best_model, _ = train_ensemble_model_with_undersampling(best_model.get_complete_pipeline_to_fit(),
-                                                                X, y, exists_resampler, max_k_undersampling)
-    if not ensemble and not undersampling:
+    index_best_model = find_best_model(loop_info)
+    best_model = models[index_best_model]
+    undersampling = all_params[index_best_model].get('undersampling_majority_class', False)
+
+    if refit_best and not calibrated:
+        # In case of calibrated, the best model has already used all available data and no further training needs to be done.
         if verbose:
             print("Training final model")
-        best_model = best_model.get_complete_pipeline_to_fit()
-        best_model.fit(X, y)
-    if verbose:
-        print("Best model found")
-    report_dfs = create_report_dfs(list_params, list_metrics, loss_metric)
-    if report_doc:
-        write_train_report(
-            report_doc=report_doc, list_params=list_params, list_metrics=list_metrics,
-            list_holdout_metrics=list_holdout_metrics, peeking_metrics=peeking_metrics,
-            list_comments=list_comments
-        )
+        if undersampling:
+            max_k_undersampling = all_params[index_best_model].get('max_k_undersampling', 0)
+            best_model = _simple_train_with_undersampling(best_model.get_complete_pipeline_to_fit(),
+                                                                X_outer_train, y_outer_train, max_k_undersampling)
+        else:
+            best_model = best_model.get_complete_pipeline_to_fit()
+            best_model.fit(X_outer_train, y_outer_train)
 
-    return best_model, list_params[index_best_model], list_comments[index_best_model], report_dfs
+    return best_model, loop_info

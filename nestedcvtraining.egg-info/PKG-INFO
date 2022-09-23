@@ -1,4 +1,4 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.1
 Name: nestedcvtraining
 Version: 0.1.1
 Summary: Perform Nested Cross Validation for model training
@@ -6,5 +6,4 @@ Home-page: https://github.com/JaimeArboleda/nestedcvtraining
 Author: JaimeArboleda
 Author-email: jaime.arboleda.castilla@gmail.com
 License: MIT License
-Description: UNKNOWN
-Platform: UNKNOWN
+License-File: LICENSE.txt

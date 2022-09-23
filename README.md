@@ -2,6 +2,12 @@
 
 nestedcvtraining: Python package to search for best parameters, train, (optionally) calibrate and validate the error of classification models using a Nested Cross-Validation approach.
 
+Nomenclature: 
+* Outer_test
+* Outer_train
+  * Inner_validation
+  * Inner_train
+   
 ## Overview
 
 nestedcvtraining is built on top of several libraries, mainly:

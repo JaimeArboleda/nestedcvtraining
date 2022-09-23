@@ -4,6 +4,7 @@ setup(
     name='nestedcvtraining',
     version='0.1.1',
     packages=['nestedcvtraining', 'nestedcvtraining.utils'],
+    install_requires=['pandas', 'imblearn', 'numpy', 'scikit-learn', 'scikit-optimize'],
     url='https://github.com/JaimeArboleda/nestedcvtraining',
     license='MIT License',
     author='JaimeArboleda',

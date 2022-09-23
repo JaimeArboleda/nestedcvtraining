@@ -1,13 +1,16 @@
 import pandas as pd
 from sklearn.decomposition import PCA
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score, make_scorer, fbeta_score
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from skopt.space import Real, Integer, Categorical
 from xgboost import XGBClassifier
 from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
-from nestedcvtraining.api import find_best_binary_model, OptionedPostProcessTransformer, MidasIdentity
+from nestedcvtraining.utils.pipes_and_transformers import IdentityTransformer
+from nestedcvtraining.api import find_best_model, OptionedTransformer
+from skopt import gbrt_minimize
 
 dict_pipelines_post_process = {
     "option_1": Pipeline(
@@ -19,27 +22,26 @@ dict_pipelines_post_process = {
             ("reduce_dims", SelectKBest(mutual_info_classif, k=5)),
         ]
     ),
-    "option_3": Pipeline([("identity", MidasIdentity())]),
+    "option_3": Pipeline([("identity", IdentityTransformer())])
 }
 
 
 if __name__ == "__main__":
     dataset_prueba = pd.read_csv(
-        "https://raw.githubusercontent.com/JaimeArboleda/nestedcvtraining/master/datasets/new-thyroid.csv", header=None
+        "https://raw.githubusercontent.com/JaimeArboleda/nestedcvtraining/master/datasets/credit_approval.csv"
     )
-    values = dataset_prueba.values
-    X, y = values[:, :-1], values[:, -1]
-
+    y = dataset_prueba["Target"].to_numpy()
+    X = dataset_prueba[[c for c in dataset_prueba.columns if c != "Target"]].to_numpy()
     dict_models = {
         "xgboost": {
             "model": XGBClassifier(),
-            "pipeline_post_process": Pipeline(
+            "pipeline": Pipeline(
                 [
                     (
-                        "post_process",
-                        OptionedPostProcessTransformer(dict_pipelines_post_process),
+                        "pre_process",
+                        OptionedTransformer(dict_pipelines_post_process),
                     ),
-                    ("resample", SMOTE()),
+                    ("resample", SMOTE())
                 ]
             ),
             "search_space": [
@@ -47,7 +49,7 @@ if __name__ == "__main__":
                 Integer(5, 6, name="max_k_undersampling"),
                 Categorical(["minority", "all"], name="resample__sampling_strategy"),
                 Categorical(
-                    ["option_1", "option_2", "option_3"], name="post_process__option"
+                    ["option_1", "option_2", "option_3"], name="pre_process__option"
                 ),
                 Integer(5, 15, name="model__max_depth"),
                 Real(0.05, 0.31, prior="log-uniform", name="model__learning_rate"),
@@ -60,7 +62,7 @@ if __name__ == "__main__":
         },
         "random_forest": {
             "model": RandomForestClassifier(),
-            "pipeline_post_process": None,
+            "pipeline": None,
             "search_space": [
                 Categorical([True, False], name="undersampling_majority_class"),
                 Integer(0, 1, name="model__bootstrap"),
@@ -76,23 +78,37 @@ if __name__ == "__main__":
         },
     }
 
-    best_model, document, full_train_report = find_best_binary_model(
+    best_model, report_df = find_best_model(
         X=X,
         y=y,
         model_search_spaces=dict_models,
         verbose=True,
-        k_inner_fold=10,
-        k_outer_fold=10,
-        skip_inner_folds=[0, 2],
-        skip_outer_folds=[0, 2],
+        k_inner=10,
+        k_outer=9,
+        skip_inner_folds=[0, 2, 4, 6, 8, 9],
+        skip_outer_folds=[0, 2, 3, 4, 6, 8],
         n_initial_points=10,
         n_calls=10,
-        loss_metric="average_precision",
-        peeking_metrics=[
-            "roc_auc",
-            "neg_log_loss",
-            "average_precision",
-            "neg_brier_score",
-        ],
+        optimizing_metric=make_scorer(roc_auc_score, multi_class='ovr', needs_proba=True),
+        other_metrics=[],
+        skopt_func=gbrt_minimize
     )
-    document.save("report_dataset_multilabel.docx")
+    report_df.to_csv("report_df.csv")
+
+    best_calbrated_model, calibrated_report_df = find_best_model(
+        X=X,
+        y=y,
+        model_search_spaces=dict_models,
+        verbose=True,
+        k_inner=10,
+        k_outer=9,
+        skip_inner_folds=[0, 2, 4, 6, 8, 9],
+        skip_outer_folds=[0, 2, 3, 4, 6, 8],
+        n_initial_points=10,
+        n_calls=10,
+        optimizing_metric=make_scorer(roc_auc_score, multi_class='ovr', needs_proba=True),
+        other_metrics=[],
+        skopt_func=gbrt_minimize,
+        calibrated=True
+    )
+    calibrated_report_df.to_csv("calibrated_report_df.csv")
