@@ -12,5 +12,5 @@ pip install nestedcvtraining
 
 ## Documentation
 
-Go to [documentation](site/index.html) to get started.
+Go to [documentation](https://jaimearboleda.github.io/nestedcvtraining/) to get started.
 
