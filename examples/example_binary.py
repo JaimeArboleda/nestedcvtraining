@@ -109,6 +109,6 @@ if __name__ == "__main__":
         optimizing_metric=make_scorer(roc_auc_score, multi_class='ovr', needs_proba=True),
         other_metrics=[],
         skopt_func=gbrt_minimize,
-        calibrated=True
+        calibrate=True
     )
     calibrated_report_df.to_csv("calibrated_report_df.csv")

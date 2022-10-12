@@ -51,6 +51,7 @@ if __name__ == "__main__":
                 Categorical(
                     ["option_1", "option_2", "option_3"], name="pre_process__option"
                 ),
+                Integer(5, 8, name="pre_process__option_1_")
                 Integer(5, 15, name="model__max_depth"),
                 Real(0.05, 0.31, prior="log-uniform", name="model__learning_rate"),
                 Integer(1, 10, name="model__min_child_weight"),
@@ -109,6 +110,6 @@ if __name__ == "__main__":
         optimizing_metric=make_scorer(roc_auc_score, multi_class='ovr', needs_proba=True),
         other_metrics=[],
         skopt_func=gbrt_minimize,
-        calibrated=True
+        calibrate=True
     )
     calibrated_report_df.to_csv("calibrated_report_df.csv")

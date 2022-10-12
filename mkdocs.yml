@@ -1,0 +1,19 @@
+site_name: Nested Cross Validation
+
+theme:
+  name: "material"
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          rendering:
+            separate_signature: true
+
+nav:
+  - index.md
+  - examples.md
+  - Reference:
+    - api.md
+    - SwitchCase.md
+    - UnderSamplingClassifier.md
