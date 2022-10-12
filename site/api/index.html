@@ -1,0 +1,993 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.0, mkdocs-material-8.5.6">
+    
+    
+      
+        <title>Api - Nested Cross Validation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.20d9efc8.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
+        
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#nestedcvtraining.api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Nested Cross Validation" class="md-header__button md-logo" aria-label="Nested Cross Validation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nested Cross Validation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Api
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Nested Cross Validation" class="md-nav__button md-logo" aria-label="Nested Cross Validation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Nested Cross Validation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3">
+          Reference
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Reference" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Reference
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Api
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Api
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nestedcvtraining.api" class="md-nav__link">
+    nestedcvtraining.api
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nestedcvtraining.api.find_best_model" class="md-nav__link">
+    find_best_model()
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SwitchCase/" class="md-nav__link">
+        SwitchCase
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../UnderSamplingClassifier/" class="md-nav__link">
+        UnderSamplingClassifier
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nestedcvtraining.api" class="md-nav__link">
+    nestedcvtraining.api
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nestedcvtraining.api.find_best_model" class="md-nav__link">
+    find_best_model()
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Api</h1>
+
+<div class="doc doc-object doc-module">
+
+
+<a id="nestedcvtraining.api"></a>
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="nestedcvtraining.api.find_best_model" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">find_best_model</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">find_best_model</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">,</span>
+    <span class="n">optimizing_metric</span><span class="p">,</span>
+    <span class="n">k_outer</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">skip_outer_folds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">k_inner</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">skip_inner_folds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_initial_points</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">n_calls</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">calibrate</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">,</span>
+    <span class="n">calibrate_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">other_metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">skopt_func</span><span class="o">=</span><span class="n">gp_minimize</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Performs nested cross validation to find the best classification model.
+The inner loop does hyperparameters tuning (using a <code>skopt</code> primitive)
+and the outer loop computes metrics for assessing the quality of the model
+without risk of overfitting bias.</p>
+<p>After the nested loop, the whole procedure is used with the full dataset to return
+a single model trained on all available data.</p>
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>X</code></td>
+          <td>
+                <code>array-like of shape (n_samples, n_features) </code>
+          </td>
+          <td><p>Features</p></td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>y</code></td>
+          <td>
+                <code>array-like of shape (n_samples,) </code>
+          </td>
+          <td><p>Targets to predict.
+It has to be discrete (for classification), and both binary and multiclass
+targets are supported.</p></td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>model</code></td>
+          <td>
+                <code>estimator object</code>
+          </td>
+          <td><p>estimator object implementing <code>fit</code> and <code>predict</code>
+The object to use to fit the data. It can be a complex object like a pipeline
+or another composite object with hyperparameters to tune.</p></td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>search_space</code></td>
+          <td>
+                <code>list of tuple</code>
+          </td>
+          <td><p>Search space dimensions provided as a list.
+Each search dimension should be defined as an instance of
+a <code>skopt</code> <code>Dimension</code> object, that is, <code>Real</code>, <code>Integer</code> or
+<code>Categorical</code>.
+In addition to the constraints and the prior, when applicable,
+the <code>Dimension</code> object should have as name the name of the param
+in the model, using the double underscore convention for nested objects.
+See <a href="../examples/">examples</a> for several examples for how to provide the search space.</p></td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>optimizing_metric</code></td>
+          <td>
+                <code>str or callable</code>
+          </td>
+          <td><p>Strategy to evaluate
+the performance of the cross-validated model on
+each inner test set, to find the best hyperparameters. It should
+follow the <code>sklearn</code> convention of <em>greater is better</em>.
+One can use:</p>
+<ul>
+<li>a single string</li>
+<li>a callable</li>
+</ul></td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>k_outer</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td><p>Number of folds for the outer cross-validation.</p></td>
+          <td>
+                <code>5</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>skip_outer_folds</code></td>
+          <td>
+                <code>list</code>
+          </td>
+          <td><p>If set, list of folds to skip during the loop,
+to reduce computational cost.</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>k_inner</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td><p>Number of folds for the inner cross-validation.</p></td>
+          <td>
+                <code>5</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>skip_inner_folds</code></td>
+          <td>
+                <code>list</code>
+          </td>
+          <td><p>If set, list of folds to skip during the loop,
+to reduce computational cost.</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>n_initial_points</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td><p>Number of initial points to use in Skopt Optimization.</p></td>
+          <td>
+                <code>5</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>n_calls</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td><p>Number of additional calls to use in Skopt Optimization.</p></td>
+          <td>
+                <code>10</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>calibrate</code></td>
+          <td>
+                <code>str</code>
+          </td>
+          <td><p>Whether to calibrate the output probabilities.
+Options:</p>
+<ul>
+<li>"no" if no calibration at all.</li>
+<li>"only_best" if only the best model on the inner loop should be calibrated</li>
+<li>"all" if all inner models should be calibrated (maybe more accurate results,
+   but much more time-consuming)</li>
+</ul></td>
+          <td>
+                <code>&#39;no&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>calibrate_params</code></td>
+          <td>
+                <code>dict</code>
+          </td>
+          <td><p>Dictionary of params for the CalibratedClassifierCV</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>other_metrics</code></td>
+          <td>
+                <code>dict</code>
+          </td>
+          <td><p>If not empty, in the report output every metric specified in this parameter
+will be computed, showing the results over the inner folds (during tuning)
+and over the outer folds (during performance evaluation).
+The parameter should be provided as a dictionary with metric names as keys
+and callables or str a values. See <a href="../examples/">examples</a> for examples.</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>skopt_func</code></td>
+          <td>
+                <code>callable</code>
+          </td>
+          <td><p>Minimization function of the skopt library to be used.
+Available options are:</p>
+<ul>
+<li>gp_minimize: performs bayesian optimization using Gaussian Processes.</li>
+<li>dummy_minimize: performs a random search.</li>
+<li>forest_minimize: performs sequential optimization using decision trees.</li>
+<li>gbrt_minimize: performs sequential optimization using gradient boosting trees.</li>
+</ul></td>
+          <td>
+                <code>gp_minimize</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>verbose</code></td>
+          <td>
+                <code>bool</code>
+          </td>
+          <td><p>Whether to trace progress or not.</p></td>
+          <td>
+                <code>False</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Returns:</strong></p>
+  <table>
+    <thead>
+      <tr>
+<th>Name</th>        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+<td><code>model</code></td>          <td>
+                <code>estimator</code>
+          </td>
+          <td><p>Model trained with the full dataset using the same procedure
+as in the inner cross validation.</p></td>
+        </tr>
+        <tr>
+<td></td>          <td>
+          </td>
+          <td><p>loop_info (dataclass) : Dataclass with information about the optimization process.
+The opt_info object has a method <code>to_dataframe()</code> that converts the
+information into a dataframe, for easier exploration of results.</p></td>
+        </tr>
+    </tbody>
+  </table>
+
+      <details class="quote">
+        <summary>Source code in <code>nestedcvtraining/api.py</code></summary>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  8</span>
+<span class="normal">  9</span>
+<span class="normal"> 10</span>
+<span class="normal"> 11</span>
+<span class="normal"> 12</span>
+<span class="normal"> 13</span>
+<span class="normal"> 14</span>
+<span class="normal"> 15</span>
+<span class="normal"> 16</span>
+<span class="normal"> 17</span>
+<span class="normal"> 18</span>
+<span class="normal"> 19</span>
+<span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">find_best_model</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">,</span>
+        <span class="n">optimizing_metric</span><span class="p">,</span>
+        <span class="n">k_outer</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">skip_outer_folds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">k_inner</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">skip_inner_folds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_initial_points</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">n_calls</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">calibrate</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">,</span>
+        <span class="n">calibrate_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">other_metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">skopt_func</span><span class="o">=</span><span class="n">gp_minimize</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Performs nested cross validation to find the best classification model.</span>
+<span class="sd">    The inner loop does hyperparameters tuning (using a `skopt` primitive)</span>
+<span class="sd">    and the outer loop computes metrics for assessing the quality of the model</span>
+<span class="sd">    without risk of overfitting bias.</span>
+
+<span class="sd">    After the nested loop, the whole procedure is used with the full dataset to return</span>
+<span class="sd">    a single model trained on all available data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        X (array-like of shape (n_samples, n_features) ): Features</span>
+<span class="sd">        y (array-like of shape (n_samples,) ): Targets to predict.</span>
+<span class="sd">            It has to be discrete (for classification), and both binary and multiclass</span>
+<span class="sd">            targets are supported.</span>
+<span class="sd">        model (estimator object): estimator object implementing `fit` and `predict`</span>
+<span class="sd">            The object to use to fit the data. It can be a complex object like a pipeline</span>
+<span class="sd">            or another composite object with hyperparameters to tune.</span>
+<span class="sd">        search_space (list of tuple): Search space dimensions provided as a list.</span>
+<span class="sd">            Each search dimension should be defined as an instance of</span>
+<span class="sd">            a `skopt` `Dimension` object, that is, `Real`, `Integer` or</span>
+<span class="sd">            `Categorical`.</span>
+<span class="sd">            In addition to the constraints and the prior, when applicable,</span>
+<span class="sd">            the `Dimension` object should have as name the name of the param</span>
+<span class="sd">            in the model, using the double underscore convention for nested objects.</span>
+<span class="sd">            See [examples](examples.md) for several examples for how to provide the search space.</span>
+<span class="sd">        optimizing_metric (str or callable): Strategy to evaluate</span>
+<span class="sd">            the performance of the cross-validated model on</span>
+<span class="sd">            each inner test set, to find the best hyperparameters. It should</span>
+<span class="sd">            follow the `sklearn` convention of *greater is better*.</span>
+<span class="sd">            One can use:</span>
+
+<span class="sd">            - a single string</span>
+<span class="sd">            - a callable</span>
+<span class="sd">        k_outer (int): Number of folds for the outer cross-validation.</span>
+<span class="sd">        skip_outer_folds (list): If set, list of folds to skip during the loop,</span>
+<span class="sd">            to reduce computational cost.</span>
+<span class="sd">        k_inner (int): Number of folds for the inner cross-validation.</span>
+<span class="sd">        skip_inner_folds (list): If set, list of folds to skip during the loop,</span>
+<span class="sd">            to reduce computational cost.</span>
+<span class="sd">        n_initial_points (int): Number of initial points to use in Skopt Optimization.</span>
+<span class="sd">        n_calls (int): Number of additional calls to use in Skopt Optimization.</span>
+<span class="sd">        calibrate (str): Whether to calibrate the output probabilities.</span>
+<span class="sd">            Options:</span>
+
+<span class="sd">            - &quot;no&quot; if no calibration at all.</span>
+<span class="sd">            - &quot;only_best&quot; if only the best model on the inner loop should be calibrated</span>
+<span class="sd">            - &quot;all&quot; if all inner models should be calibrated (maybe more accurate results,</span>
+<span class="sd">               but much more time-consuming)</span>
+<span class="sd">        calibrate_params (dict): Dictionary of params for the CalibratedClassifierCV</span>
+<span class="sd">        other_metrics (dict): If not empty, in the report output every metric specified in this parameter</span>
+<span class="sd">            will be computed, showing the results over the inner folds (during tuning)</span>
+<span class="sd">            and over the outer folds (during performance evaluation).</span>
+<span class="sd">            The parameter should be provided as a dictionary with metric names as keys</span>
+<span class="sd">            and callables or str a values. See [examples](examples.md) for examples.</span>
+<span class="sd">        skopt_func (callable): Minimization function of the skopt library to be used.</span>
+<span class="sd">            Available options are:</span>
+
+<span class="sd">            - gp_minimize: performs bayesian optimization using Gaussian Processes.</span>
+<span class="sd">            - dummy_minimize: performs a random search.</span>
+<span class="sd">            - forest_minimize: performs sequential optimization using decision trees.</span>
+<span class="sd">            - gbrt_minimize: performs sequential optimization using gradient boosting trees.</span>
+<span class="sd">        verbose (bool): Whether to trace progress or not.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        model (estimator): Model trained with the full dataset using the same procedure</span>
+<span class="sd">            as in the inner cross validation.</span>
+<span class="sd">        loop_info (dataclass) : Dataclass with information about the optimization process.</span>
+<span class="sd">            The opt_info object has a method `to_dataframe()` that converts the</span>
+<span class="sd">            information into a dataframe, for easier exploration of results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">check_X_y</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span>
+                     <span class="n">accept_sparse</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;csc&#39;</span><span class="p">,</span> <span class="s1">&#39;csr&#39;</span><span class="p">,</span> <span class="s1">&#39;coo&#39;</span><span class="p">],</span>
+                     <span class="n">force_all_finite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_nd</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">skip_inner_folds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">skip_inner_folds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">skip_outer_folds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">skip_outer_folds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">other_metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">other_metrics</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">calibrate_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">calibrate_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="n">outer_cv</span> <span class="o">=</span> <span class="n">StratifiedKFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">k_outer</span><span class="p">)</span>
+    <span class="n">loop_info</span> <span class="o">=</span> <span class="n">LoopInfo</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">outer_cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Looping over </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> outer fold&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip_outer_folds</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">inner_loop_info</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
+                <span class="n">X_outer_train</span><span class="o">=</span><span class="n">X</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span> <span class="n">y_outer_train</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span>
+                <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">search_space</span><span class="o">=</span><span class="n">search_space</span><span class="p">,</span>
+                <span class="n">X_outer_test</span><span class="o">=</span><span class="n">X</span><span class="p">[</span><span class="n">test_index</span><span class="p">],</span> <span class="n">y_outer_test</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">test_index</span><span class="p">],</span>
+                <span class="n">k_inner</span><span class="o">=</span><span class="n">k_inner</span><span class="p">,</span> <span class="n">skip_inner_folds</span><span class="o">=</span><span class="n">skip_inner_folds</span><span class="p">,</span> <span class="n">outer_kfold</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">outer_test_indexes</span><span class="o">=</span><span class="n">test_index</span><span class="p">,</span>
+                <span class="n">n_initial_points</span><span class="o">=</span><span class="n">n_initial_points</span><span class="p">,</span> <span class="n">n_calls</span><span class="o">=</span><span class="n">n_calls</span><span class="p">,</span>
+                <span class="n">calibrate</span><span class="o">=</span><span class="n">calibrate</span><span class="p">,</span> <span class="n">calibrate_params</span><span class="o">=</span><span class="n">calibrate_params</span><span class="p">,</span> <span class="n">optimizing_metric</span><span class="o">=</span><span class="n">optimizing_metric</span><span class="p">,</span>
+                <span class="n">other_metrics</span><span class="o">=</span><span class="n">other_metrics</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">skopt_func</span><span class="o">=</span><span class="n">skopt_func</span><span class="p">)</span>
+            <span class="n">loop_info</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">inner_loop_info</span><span class="p">)</span>
+
+    <span class="c1"># After assessing the procedure, we repeat it on the full dataset:</span>
+    <span class="n">final_model</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
+        <span class="n">X_outer_train</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y_outer_train</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">search_space</span><span class="o">=</span><span class="n">search_space</span><span class="p">,</span>
+        <span class="n">X_outer_test</span><span class="o">=</span><span class="p">[],</span> <span class="n">y_outer_test</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">k_inner</span><span class="o">=</span><span class="n">k_inner</span><span class="p">,</span> <span class="n">skip_inner_folds</span><span class="o">=</span><span class="n">skip_inner_folds</span><span class="p">,</span> <span class="n">outer_kfold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer_test_indexes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_initial_points</span><span class="o">=</span><span class="n">n_initial_points</span><span class="p">,</span> <span class="n">n_calls</span><span class="o">=</span><span class="n">n_calls</span><span class="p">,</span>
+        <span class="n">calibrate</span><span class="o">=</span><span class="n">calibrate</span><span class="p">,</span> <span class="n">calibrate_params</span><span class="o">=</span><span class="n">calibrate_params</span><span class="p">,</span> <span class="n">optimizing_metric</span><span class="o">=</span><span class="n">optimizing_metric</span><span class="p">,</span> <span class="n">other_metrics</span><span class="o">=</span><span class="p">{},</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">skopt_func</span><span class="o">=</span><span class="n">skopt_func</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">final_model</span><span class="p">,</span> <span class="n">loop_info</span>
+</code></pre></div></td></tr></table></div>
+      </details>
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div><p>separate_signature: True</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+        
+        <a href="../examples/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Examples" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Examples
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../SwitchCase/" class="md-footer__link md-footer__link--next" aria-label="Next: SwitchCase" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              SwitchCase
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.5bf1dace.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.078830c0.min.js"></script>
+      
+    
+  </body>
+</html>
