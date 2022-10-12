@@ -14,3 +14,18 @@ pip install nestedcvtraining
 
 Go to [documentation](https://jaimearboleda.github.io/nestedcvtraining/) to get started.
 
+## Author
+
+[Jaime Arboleda @JaimeArboleda](https://github.com/JaimeArboleda)
+
+- <[Linkedin](https://www.linkedin.com/in/jaime-arboleda-castilla-1a676b207/)>
+- <[Mail](mailto:jaime.arboleda.castilla@gmail.com)>
+
+## Contributors are welcome!
+
+Pull requests and/or suggestions are more than welcome!
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
+
