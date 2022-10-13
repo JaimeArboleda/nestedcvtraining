@@ -104,14 +104,6 @@ class SwitchCase(_BaseComposition):
                     "'%s' (type %s) doesn't)" % (t, type(t))
                 )
 
-            if hasattr(t, "fit_resample") and (
-                hasattr(t, "fit_transform") or hasattr(t, "transform")
-            ):
-                raise TypeError(
-                    "All transformers should implement fit and transform or fit_resample."
-                    " '%s' implements both)" % t
-                )
-
     def get_params(self, deep=True):
         """Get parameters for this estimator.
         Returns the parameters given in the constructor as well as the

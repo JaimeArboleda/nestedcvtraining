@@ -1,6 +1,6 @@
 from sklearn.model_selection import StratifiedKFold
 from skopt import gp_minimize
-from .utils.reporting import LoopInfo
+from .utils.reporting import Report
 from .utils.training import train_model
 from sklearn.utils.validation import check_X_y
 
@@ -88,6 +88,7 @@ def find_best_model(
     Returns:
         model (estimator): Model trained with the full dataset using the same procedure
             as in the inner cross validation.
+        params (dict): Dictionary of (hyper)parameters of the best model.
         loop_info (dataclass) : Dataclass with information about the optimization process.
             The opt_info object has a method `to_dataframe()` that converts the
             information into a dataframe, for easier exploration of results.
@@ -107,11 +108,11 @@ def find_best_model(
         calibrate_params = dict()
 
     outer_cv = StratifiedKFold(n_splits=k_outer)
-    loop_info = LoopInfo()
+    loop_info = Report()
     for k, (train_index, test_index) in enumerate(outer_cv.split(X, y)):
         print(f"Looping over {k} outer fold")
         if k not in skip_outer_folds:
-            _, inner_loop_info = train_model(
+            _, _, inner_loop_info = train_model(
                 X_outer_train=X[train_index], y_outer_train=y[train_index],
                 model=model, search_space=search_space,
                 X_outer_test=X[test_index], y_outer_test=y[test_index],
@@ -119,10 +120,10 @@ def find_best_model(
                 n_initial_points=n_initial_points, n_calls=n_calls,
                 calibrate=calibrate, calibrate_params=calibrate_params, optimizing_metric=optimizing_metric,
                 other_metrics=other_metrics, verbose=verbose, skopt_func=skopt_func)
-            loop_info.extend(inner_loop_info)
+            loop_info._extend(inner_loop_info)
 
     # After assessing the procedure, we repeat it on the full dataset:
-    final_model, _ = train_model(
+    final_model, final_params, _ = train_model(
         X_outer_train=X, y_outer_train=y,
         model=model, search_space=search_space,
         X_outer_test=[], y_outer_test=[],
@@ -130,4 +131,4 @@ def find_best_model(
         n_initial_points=n_initial_points, n_calls=n_calls,
         calibrate=calibrate, calibrate_params=calibrate_params, optimizing_metric=optimizing_metric, other_metrics={},
         verbose=verbose, skopt_func=skopt_func)
-    return final_model, loop_info
+    return final_model, final_params, loop_info

@@ -2,7 +2,7 @@
 
 This is a Python package that provides an easy way to do **Nested Cross Validation** for **hyperparameter tuning** and **model evaluation** on classification problems.
 
-It is specially designed for binary or multiclass classification problems where either there is an imbalance problem or probability calibration is very important (or both). 
+It is specially designed for binary or multiclass classification problems where either there is an imbalance problem or probability calibration is very important (or both). And where the dataset is not very big (the bigger the dataset, the less relevant is to perform cross validation, as the population is big enough to have better estimates without doing it).
 
 ## Install nestedcvtraining
 

@@ -2,7 +2,7 @@ from sklearn.model_selection import StratifiedKFold, KFold, cross_validate
 from skopt.utils import use_named_args
 from sklearn.metrics._scorer import _MultimetricScorer, _check_multimetric_scoring
 from sklearn.calibration import CalibratedClassifierCV
-from .reporting import LoopInfo
+from .reporting import Report
 import numpy as np
 
 
@@ -21,7 +21,7 @@ def yield_splits(X, y, k, skip):
             yield train_index, test_index
 
 
-def find_best_model(loop_info: LoopInfo):
+def find_best_model(loop_info: Report):
     optimizing_metrics = loop_info.inner_validation_metrics["optimizing_metric"]
     index_best_model = optimizing_metrics.index(max(optimizing_metrics))
     return index_best_model
@@ -32,7 +32,7 @@ def train_model(X_outer_train, y_outer_train, model, search_space,
                 skip_inner_folds, n_initial_points, n_calls,
                 calibrate, calibrate_params, optimizing_metric, other_metrics,
                 skopt_func, verbose):
-    loop_info = LoopInfo()
+    loop_info = Report()
     all_metrics = {
         "optimizing_metric": optimizing_metric,
     }
@@ -54,7 +54,7 @@ def train_model(X_outer_train, y_outer_train, model, search_space,
         )
         inner_metrics = evaluate_metrics(cv_results)
         outer_metrics = {k: [None] for k in inner_metrics}
-        loop_info.append(
+        loop_info._append(
             False, outer_kfold, params, inner_metrics, outer_metrics, None, outer_test_indexes
         )
 
@@ -90,4 +90,4 @@ def train_model(X_outer_train, y_outer_train, model, search_space,
         for k in loop_info.outer_test_metrics:
             loop_info.outer_test_metrics[k][index_best_model] = scores[k]
 
-    return best_model, loop_info
+    return best_model, best_params, loop_info

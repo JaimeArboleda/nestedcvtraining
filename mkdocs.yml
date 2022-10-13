@@ -15,5 +15,6 @@ nav:
   - examples.md
   - Reference:
     - api.md
+    - Report.md
     - SwitchCase.md
     - UnderSamplingClassifier.md
