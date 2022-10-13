@@ -266,6 +266,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../Report/" class="md-nav__link">
+        Report
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../SwitchCase/" class="md-nav__link">
         SwitchCase
       </a>
@@ -635,6 +649,12 @@ Available options are:</p>
 as in the inner cross validation.</p></td>
         </tr>
         <tr>
+<td><code>params</code></td>          <td>
+                <code>dict</code>
+          </td>
+          <td><p>Dictionary of (hyper)parameters of the best model.</p></td>
+        </tr>
+        <tr>
 <td></td>          <td>
           </td>
           <td><p>loop_info (dataclass) : Dataclass with information about the optimization process.
@@ -771,7 +791,8 @@ information into a dataframe, for easier exploration of results.</p></td>
 <span class="normal">130</span>
 <span class="normal">131</span>
 <span class="normal">132</span>
-<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">find_best_model</span><span class="p">(</span>
+<span class="normal">133</span>
+<span class="normal">134</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">find_best_model</span><span class="p">(</span>
         <span class="n">X</span><span class="p">,</span>
         <span class="n">y</span><span class="p">,</span>
         <span class="n">model</span><span class="p">,</span>
@@ -854,6 +875,7 @@ information into a dataframe, for easier exploration of results.</p></td>
 <span class="sd">    Returns:</span>
 <span class="sd">        model (estimator): Model trained with the full dataset using the same procedure</span>
 <span class="sd">            as in the inner cross validation.</span>
+<span class="sd">        params (dict): Dictionary of (hyper)parameters of the best model.</span>
 <span class="sd">        loop_info (dataclass) : Dataclass with information about the optimization process.</span>
 <span class="sd">            The opt_info object has a method `to_dataframe()` that converts the</span>
 <span class="sd">            information into a dataframe, for easier exploration of results.</span>
@@ -873,11 +895,11 @@ information into a dataframe, for easier exploration of results.</p></td>
         <span class="n">calibrate_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
 
     <span class="n">outer_cv</span> <span class="o">=</span> <span class="n">StratifiedKFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">k_outer</span><span class="p">)</span>
-    <span class="n">loop_info</span> <span class="o">=</span> <span class="n">LoopInfo</span><span class="p">()</span>
+    <span class="n">loop_info</span> <span class="o">=</span> <span class="n">Report</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">outer_cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)):</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Looping over </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> outer fold&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip_outer_folds</span><span class="p">:</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">inner_loop_info</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">inner_loop_info</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
                 <span class="n">X_outer_train</span><span class="o">=</span><span class="n">X</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span> <span class="n">y_outer_train</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span>
                 <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">search_space</span><span class="o">=</span><span class="n">search_space</span><span class="p">,</span>
                 <span class="n">X_outer_test</span><span class="o">=</span><span class="n">X</span><span class="p">[</span><span class="n">test_index</span><span class="p">],</span> <span class="n">y_outer_test</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">test_index</span><span class="p">],</span>
@@ -885,10 +907,10 @@ information into a dataframe, for easier exploration of results.</p></td>
                 <span class="n">n_initial_points</span><span class="o">=</span><span class="n">n_initial_points</span><span class="p">,</span> <span class="n">n_calls</span><span class="o">=</span><span class="n">n_calls</span><span class="p">,</span>
                 <span class="n">calibrate</span><span class="o">=</span><span class="n">calibrate</span><span class="p">,</span> <span class="n">calibrate_params</span><span class="o">=</span><span class="n">calibrate_params</span><span class="p">,</span> <span class="n">optimizing_metric</span><span class="o">=</span><span class="n">optimizing_metric</span><span class="p">,</span>
                 <span class="n">other_metrics</span><span class="o">=</span><span class="n">other_metrics</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">skopt_func</span><span class="o">=</span><span class="n">skopt_func</span><span class="p">)</span>
-            <span class="n">loop_info</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">inner_loop_info</span><span class="p">)</span>
+            <span class="n">loop_info</span><span class="o">.</span><span class="n">_extend</span><span class="p">(</span><span class="n">inner_loop_info</span><span class="p">)</span>
 
     <span class="c1"># After assessing the procedure, we repeat it on the full dataset:</span>
-    <span class="n">final_model</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
+    <span class="n">final_model</span><span class="p">,</span> <span class="n">final_params</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span>
         <span class="n">X_outer_train</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y_outer_train</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
         <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">search_space</span><span class="o">=</span><span class="n">search_space</span><span class="p">,</span>
         <span class="n">X_outer_test</span><span class="o">=</span><span class="p">[],</span> <span class="n">y_outer_test</span><span class="o">=</span><span class="p">[],</span>
@@ -896,7 +918,7 @@ information into a dataframe, for easier exploration of results.</p></td>
         <span class="n">n_initial_points</span><span class="o">=</span><span class="n">n_initial_points</span><span class="p">,</span> <span class="n">n_calls</span><span class="o">=</span><span class="n">n_calls</span><span class="p">,</span>
         <span class="n">calibrate</span><span class="o">=</span><span class="n">calibrate</span><span class="p">,</span> <span class="n">calibrate_params</span><span class="o">=</span><span class="n">calibrate_params</span><span class="p">,</span> <span class="n">optimizing_metric</span><span class="o">=</span><span class="n">optimizing_metric</span><span class="p">,</span> <span class="n">other_metrics</span><span class="o">=</span><span class="p">{},</span>
         <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">skopt_func</span><span class="o">=</span><span class="n">skopt_func</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">final_model</span><span class="p">,</span> <span class="n">loop_info</span>
+    <span class="k">return</span> <span class="n">final_model</span><span class="p">,</span> <span class="n">final_params</span><span class="p">,</span> <span class="n">loop_info</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -946,13 +968,13 @@ information into a dataframe, for easier exploration of results.</p></td>
       
       
         
-        <a href="../SwitchCase/" class="md-footer__link md-footer__link--next" aria-label="Next: SwitchCase" rel="next">
+        <a href="../Report/" class="md-footer__link md-footer__link--next" aria-label="Next: Report" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              SwitchCase
+              Report
             </div>
           </div>
           <div class="md-footer__button md-icon">

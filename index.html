@@ -230,6 +230,20 @@
   
   
     <li class="md-nav__item">
+      <a href="Report/" class="md-nav__link">
+        Report
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="SwitchCase/" class="md-nav__link">
         SwitchCase
       </a>
@@ -333,8 +347,7 @@ Nested Cross Validation Scheme</p>
 <li>In the outer loop, we split (X, y) in several folds, and we call each of the splits (X_outer_train, y_outer_train), (X_outer_test, y_outer_test)</li>
 <li>In the inner loop, we split (X_outer_train, y_outer_train) in several folds, and we call each of the splits (X_inner_train, y_inner_train), (X_inner_validation, y_inner_validation)</li>
 </ul>
-<p><img alt="Nomenclature scheme" src="img/scheme.png" /></p>
-<p>For example, if both k_outer_folds and k_inner_folds where 3, as in the previous scheme, then the algorithm will run 3 outer loops and 3 inner loops, so in total 9 * (number of calls of the optimizing procedure that tries different hyperparameters) partial inner models will be fitted, 3 full inner models will be fitted, returned by the inner loop (i.e. the <em>black-box</em>) and evaluated on the test set and a final model will be fitted and returned by the main function. I hope this is clear at this stage! </p>
+<p>For example, if both k_outer_folds and k_inner_folds where 3, then the algorithm will run 3 outer loops and 3 inner loops, so in total 9 * (number of calls of the optimizing procedure that tries different hyperparameters) partial inner models will be fitted, 3 full inner models will be fitted, returned by the inner loop (i.e. the <em>black-box</em>) and evaluated on the test set and a final model will be fitted and returned by the main function. I hope this is clear at this stage! </p>
 <h1 id="principles">Principles</h1>
 <p>This package follows all these rules and recommended practices:</p>
 <ol>
