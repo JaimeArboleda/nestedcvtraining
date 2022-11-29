@@ -14,11 +14,18 @@ def evaluate_metrics(cv_results):
     return evaluations
 
 
-def yield_splits(X, y, k, skip):
-    cv = StratifiedKFold(n_splits=k)
+def yield_splits(X, y, k, skip, yield_cv_idx=False):
+    y_counts = np.bincount(y)
+    if np.all(k > y_counts):
+        cv = KFold(n_splits=k)
+    else:
+        cv = StratifiedKFold(n_splits=k)
     for cv_idx, (train_index, test_index) in enumerate(cv.split(X, y)):
-        if k not in skip:
-            yield train_index, test_index
+        if cv_idx not in skip:
+            if yield_cv_idx:
+                yield cv_idx, (train_index, test_index)
+            else:
+                yield train_index, test_index
 
 
 def find_best_model(loop_info: Report):

@@ -1,7 +1,7 @@
 from sklearn.model_selection import StratifiedKFold
 from skopt import gp_minimize
 from .utils.reporting import Report
-from .utils.training import train_model
+from .utils.training import train_model, yield_splits
 from sklearn.utils.validation import check_X_y
 
 
@@ -107,20 +107,18 @@ def find_best_model(
     if calibrate_params is None:
         calibrate_params = dict()
 
-    outer_cv = StratifiedKFold(n_splits=k_outer)
     loop_info = Report()
-    for k, (train_index, test_index) in enumerate(outer_cv.split(X, y)):
-        print(f"Looping over {k} outer fold")
-        if k not in skip_outer_folds:
-            _, _, inner_loop_info = train_model(
-                X_outer_train=X[train_index], y_outer_train=y[train_index],
-                model=model, search_space=search_space,
-                X_outer_test=X[test_index], y_outer_test=y[test_index],
-                k_inner=k_inner, skip_inner_folds=skip_inner_folds, outer_kfold=k, outer_test_indexes=test_index,
-                n_initial_points=n_initial_points, n_calls=n_calls,
-                calibrate=calibrate, calibrate_params=calibrate_params, optimizing_metric=optimizing_metric,
-                other_metrics=other_metrics, verbose=verbose, skopt_func=skopt_func)
-            loop_info._extend(inner_loop_info)
+    for k, (train_index, test_index) in yield_splits(X, y, k_outer, skip_outer_folds, yield_cv_idx=True):
+        print(f"Looping over outer folds")
+        _, _, inner_loop_info = train_model(
+            X_outer_train=X[train_index], y_outer_train=y[train_index],
+            model=model, search_space=search_space,
+            X_outer_test=X[test_index], y_outer_test=y[test_index],
+            k_inner=k_inner, skip_inner_folds=skip_inner_folds, outer_kfold=k, outer_test_indexes=test_index,
+            n_initial_points=n_initial_points, n_calls=n_calls,
+            calibrate=calibrate, calibrate_params=calibrate_params, optimizing_metric=optimizing_metric,
+            other_metrics=other_metrics, verbose=verbose, skopt_func=skopt_func)
+        loop_info._extend(inner_loop_info)
 
     # After assessing the procedure, we repeat it on the full dataset:
     final_model, final_params, _ = train_model(

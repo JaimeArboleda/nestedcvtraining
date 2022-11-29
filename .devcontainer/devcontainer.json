@@ -1,0 +1,17 @@
+{
+    "name": "nestedcvtraining",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": ".."
+    },
+  
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash"
+        }
+      }
+    },
+
+    "forwardPorts": [8890]
+  }
