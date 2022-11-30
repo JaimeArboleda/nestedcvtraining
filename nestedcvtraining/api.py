@@ -109,7 +109,7 @@ def find_best_model(
 
     loop_info = Report()
     for k, (train_index, test_index) in yield_splits(X, y, k_outer, skip_outer_folds, yield_cv_idx=True):
-        print(f"Looping over outer folds")
+        print(f"Looping over {k} outer fold")
         _, _, inner_loop_info = train_model(
             X_outer_train=X[train_index], y_outer_train=y[train_index],
             model=model, search_space=search_space,
